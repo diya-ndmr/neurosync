@@ -56,6 +56,17 @@ To test a local Moodle connection, configure Moodle Web Services and REST, then 
 
 Never commit `.env` files, Moodle tokens, email API keys, or local database files. A safe environment template is provided at [backend/.env.example](backend/.env.example).
 
+## Deploying the backend to Render
+
+The repository pins Render to Python 3.11.9 in both `render.yaml` and `.python-version`. Deploying the Blueprint applies the `PYTHON_VERSION` setting automatically. For a manually created Render service, set the service environment variable `PYTHON_VERSION` to `3.11.9` in the Render dashboard; an existing dashboard value overrides the version file. Save the change and trigger **Save, rebuild, and deploy**, then confirm the build log shows Python 3.11.9.
+
+Configure the backend service's Root Directory and commands consistently:
+
+| Root Directory | Build Command | Start Command |
+| --- | --- | --- |
+| `backend` | `pip install --upgrade pip && pip install -r requirements.txt` | `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Repository root (blank) | `cd backend && pip install --upgrade pip && pip install -r requirements.txt` | `cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+
 ## Tests and production build
 
 ```powershell
