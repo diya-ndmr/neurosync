@@ -28,6 +28,13 @@ def test_production_settings_accept_explicit_secure_configuration():
     assert settings.cors_origins == ["https://portal.example.edu"]
 
 
+def test_render_deployment_rejects_nonproduction_environment(monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+
+    with pytest.raises(ValidationError, match="Render deployments require ENVIRONMENT=production"):
+        Settings.model_validate({"environment": "development"})
+
+
 @pytest.mark.parametrize(
     "overrides",
     [

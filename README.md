@@ -62,6 +62,8 @@ The repository pins Render to Python 3.11.9 in both `render.yaml` and `.python-v
 
 The Render Blueprint provisions separate PostgreSQL databases for the application and LMS data because both use table names such as `students`, `modules`, and `assessments`. For a manually configured service, set `DATABASE_URL` and `MOCK_LMS_DATABASE_URL` to the respective PostgreSQL connection strings. Do not point both variables to the same database or set either to SQLite in production. `ENVIRONMENT` must be `production`.
 
+At startup, the backend detects Render's `RENDER`/`RENDER_SERVICE_ID` variables and refuses to run unless `ENVIRONMENT=production`. This prevents a missing or incorrect Render environment setting from silently using the local SQLite defaults; the resulting validation error points to the service configuration that needs correction.
+
 The frontend accepts the backend's base URL in `VITE_API_URL` and adds `/api` automatically; do not append `/api` twice. The Blueprint supplies the backend URL from the Render service.
 
 Configure the backend service's Root Directory and commands consistently:

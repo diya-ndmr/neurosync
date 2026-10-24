@@ -1,3 +1,4 @@
+import os
 from typing import Literal, Optional
 from email.utils import parseaddr
 
@@ -29,6 +30,15 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_security(self):
+        is_render_deployment = (
+            os.getenv("RENDER", "").lower() == "true" or bool(os.getenv("RENDER_SERVICE_ID"))
+        )
+        if is_render_deployment and self.environment != "production":
+            raise ValueError(
+                "Render deployments require ENVIRONMENT=production; configure PostgreSQL database URLs "
+                "instead of falling back to local SQLite files"
+            )
+
         if self.environment == "production":
             if self.mock_sso_enabled:
                 raise ValueError("Mock Microsoft SSO must be disabled in production")
