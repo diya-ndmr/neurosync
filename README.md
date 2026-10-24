@@ -10,6 +10,7 @@ The project began as a Microsoft Fabric university intelligence platform. This r
 - Student records, attendance, assessments, referrals, interventions, meetings, and follow-ups.
 - CSV dataset import/export workflows.
 - Student risk analysis and intervention recommendations.
+- Firebase Authentication for production email/password sign-in, email verification, and password recovery.
 - Optional local Moodle REST connection check. Moodle remains optional; the connection check does not synchronize course, enrolment, assignment, or grade data.
 - Synthetic demo profiles and student risk data for local development.
 
@@ -54,7 +55,7 @@ Open `http://localhost:5173`. The login page shows the available development dem
 
 To test a local Moodle connection, configure Moodle Web Services and REST, then create a dedicated integration account and a restricted service. Put `MOODLE_BASE_URL` and the Moodle-generated `MOODLE_TOKEN` in the private `backend/.env` file. The Admin Settings page can test `core_webservice_get_site_info`. See [the Moodle setup guide](backend/lms/moodle-integration.md) for details.
 
-Never commit `.env` files, Moodle tokens, email API keys, or local database files. A safe environment template is provided at [backend/.env.example](backend/.env.example).
+Never commit `.env` files, Moodle tokens, Firebase service-account keys, or local database files. A safe environment template is provided at [backend/.env.example](backend/.env.example).
 
 ## Deploying the backend to Render
 
@@ -65,6 +66,19 @@ The Render Blueprint provisions separate PostgreSQL databases for the applicatio
 At startup, the backend detects Render's `RENDER`/`RENDER_SERVICE_ID` variables and refuses to run unless `ENVIRONMENT=production`. This prevents a missing or incorrect Render environment setting from silently using the local SQLite defaults; the resulting validation error points to the service configuration that needs correction.
 
 The frontend accepts the backend's base URL in `VITE_API_URL` and adds `/api` automatically; do not append `/api` twice. The Blueprint supplies the backend URL from the Render service.
+
+### Firebase Authentication setup
+
+The production frontend uses the Firebase project `neurosync-d7b3c`. In the Firebase Console:
+
+1. Enable **Authentication → Sign-in method → Email/Password**.
+2. Add the deployed frontend host (for example, `neurosync-frontend.onrender.com`, and the exact Vercel host if applicable) under **Authentication → Settings → Authorized domains**.
+3. Register a Firebase Web App and copy its `apiKey` and `appId`.
+4. Create a Firebase Admin SDK service-account JSON key for the same project. Keep this private.
+
+For Render, configure the backend service's **Environment** with `FIREBASE_PROJECT_ID=neurosync-d7b3c` and `FIREBASE_CREDENTIALS_PATH=/etc/secrets/neurosync-firebase-admin.json`. Under **Secret Files**, upload the service-account JSON with the exact filename `neurosync-firebase-admin.json`. Set `VITE_FIREBASE_API_KEY` and `VITE_FIREBASE_APP_ID` on the frontend static site from the Firebase Web App config. `VITE_FIREBASE_PROJECT_ID` and `VITE_FIREBASE_AUTH_DOMAIN` are already set by the Blueprint. These frontend values are public configuration; the service-account file is secret and must never be committed.
+
+Firebase sends verification and password-reset emails using its default sender; no Resend account or custom sending domain is required. Public sign-up creates student accounts. For staff, an administrator first reserves the email and role in NeuroSync's User Management page; the staff member then creates and verifies a Firebase account using exactly that email. Existing NeuroSync records keep their roles when the verified Firebase email matches. Existing passwords are not migrated: users establish a new Firebase password through sign-up or Firebase password recovery.
 
 Configure the backend service's Root Directory and commands consistently:
 

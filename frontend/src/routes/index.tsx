@@ -7,8 +7,6 @@ import AuthGuard from './AuthGuard';
 const Login = lazy(() => import('../pages/Login/Login'));
 const Register = lazy(() => import('../pages/Register/Register'));
 const ForgotPassword = lazy(() => import('../pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('../pages/ResetPassword'));
-const VerifyEmail = lazy(() => import('../pages/VerifyEmail'));
 
 const StudentDashboard = lazy(() => import('../pages/StudentDashboard/StudentDashboard'));
 const StudentAcademics = lazy(() => import('../pages/StudentPages/Academics'));
@@ -51,14 +49,6 @@ export const router = createBrowserRouter([
   {
     path: '/forgot-password',
     element: withSuspense(<ForgotPassword />)
-  },
-  {
-    path: '/reset-password',
-    element: withSuspense(<ResetPassword />)
-  },
-  {
-    path: '/verify-email',
-    element: withSuspense(<VerifyEmail />)
   },
   {
     element: <AuthGuard />,

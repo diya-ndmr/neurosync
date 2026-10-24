@@ -33,20 +33,3 @@ class TokenResponse(BaseModel):
     name: str
     role: str
     email: str
-
-
-class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
-
-
-class EmailVerificationRequest(BaseModel):
-    token: str = Field(min_length=1, max_length=256)
-
-
-class ResendVerificationRequest(BaseModel):
-    email: EmailStr
-
-
-class ResetPasswordRequest(BaseModel):
-    token: str = Field(min_length=1, max_length=256)
-    new_password: str = Field(min_length=8, max_length=128)

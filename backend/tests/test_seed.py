@@ -118,8 +118,8 @@ def test_seed_refuses_to_create_public_demo_accounts_in_production(tmp_path):
         "SECRET_KEY": "production-test-key-with-enough-unique-characters-123",
         "CORS_ORIGINS": '["https://neurosync.example"]',
         "MOCK_LMS_DATABASE_URL": "postgresql://lms-db.example.edu/neurosync_lms",
-        "RESEND_API_KEY": "re_test_key",
-        "RESEND_FROM_EMAIL": "NeuroSync <no-reply@university.edu>",
+        "FIREBASE_PROJECT_ID": "neurosync-d7b3c",
+        "FIREBASE_CREDENTIALS_PATH": "/tmp/neurosync-firebase-admin.json",
         "FRONTEND_URL": "https://neurosync.example",
     }
     result = subprocess.run(

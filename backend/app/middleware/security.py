@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database.connection import get_db
 from app.config.settings import settings
 from app.models.student import StudentProfile
-from app.models.user import EmailVerificationToken, User, UserRole
+from app.models.user import User, UserRole
 
 security = HTTPBearer(auto_error=False)
 
@@ -47,7 +47,6 @@ def get_current_user(
             db.query(User)
             .filter(
                 User.role == demo_role,
-                ~User.id.in_(db.query(EmailVerificationToken.user_id)),
             )
             .first()
             if demo_role

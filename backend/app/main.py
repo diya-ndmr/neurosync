@@ -18,7 +18,6 @@ from app.api import (
     wellbeing,
     predictions,
     analytics,
-    forgot_password,
     study_sessions,
     modules,
     mock_lms,
@@ -31,6 +30,7 @@ from lms.generator import ensure_mock_lms_seeded, lms_dataset_is_seeded
 import lms.models
 from lms.workflow_service import ensure_fictional_student_emails
 from app.observability import RequestObservabilityMiddleware, get_app_logger
+from app.services.firebase_auth import get_firebase_app
 import os
 
 logger = get_app_logger()
@@ -51,6 +51,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RequestObservabilityMiddleware)
+
+if settings.environment == "production":
+    get_firebase_app()
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -93,7 +96,6 @@ app.include_router(auth.router)
 app.include_router(admin_users.router)
 app.include_router(csv_data.router)
 app.include_router(health.router)
-app.include_router(forgot_password.router)
 app.include_router(students.router)
 app.include_router(assessments.router)
 app.include_router(attendance.router)

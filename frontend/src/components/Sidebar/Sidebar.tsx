@@ -68,8 +68,8 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const items = roleNav[user.role];
   const preferencesPath = `/${user.role}/preferences`;
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 

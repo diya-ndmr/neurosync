@@ -138,7 +138,7 @@ export default function UsersPage() {
         aria-labelledby="provision-staff-heading"
       >
         <h2 id="provision-staff-heading" className="text-lg font-semibold text-ink">Provision staff account</h2>
-        <p className="mt-1 text-sm text-ink-soft">Lecturer and advisor accounts are created by an administrator. A single-use password setup link will be emailed to the account holder.</p>
+        <p className="mt-1 text-sm text-ink-soft">Reserve a lecturer or advisor role for an email address. The account holder must create a Firebase account and verify that same address before signing in.</p>
         <form onSubmit={provisionStaffAccount} className="mt-4 grid gap-3 md:grid-cols-4">
           <label className="text-sm font-medium text-ink">
             Full name
@@ -179,7 +179,7 @@ export default function UsersPage() {
               disabled={provisioning}
               className="min-h-11 w-full rounded bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {provisioning ? 'Sending setup link…' : 'Create staff account'}
+              {provisioning ? 'Reserving role…' : 'Reserve staff role'}
             </button>
           </div>
         </form>

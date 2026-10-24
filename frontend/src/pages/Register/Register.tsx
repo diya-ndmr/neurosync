@@ -5,7 +5,7 @@ import { Eye, EyeOff, Lock, Mail, User, ArrowRight, ShieldCheck } from 'lucide-r
 import Logo from '../../components/Logo';
 import NeoButton from '../../components/Buttons/NeoButton';
 import { useAuth } from '../../context/AuthContext';
-import { api, ApiError } from '../../services/api';
+import { api } from '../../services/api';
 import type { Role } from '../../types';
 
 const roleOptions: { value: Role; label: string; desc: string }[] = [
@@ -27,9 +27,7 @@ export default function Register() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [registrationComplete, setRegistrationComplete] = useState(false);
-  const [emailDeliveryFailed, setEmailDeliveryFailed] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [resent, setResent] = useState(false);
+  const [registrationMessage, setRegistrationMessage] = useState('');
 
   useEffect(() => {
     api.get<{ roles: string[] }>('/auth/registration-options')
@@ -67,30 +65,13 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register({ name, email, password, role });
+      const message = await register({ name, email, password, role });
+      setRegistrationMessage(message);
       setRegistrationComplete(true);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 502 && err.message.startsWith('Account created')) {
-        setRegistrationComplete(true);
-        setEmailDeliveryFailed(true);
-      } else {
-        setError(err instanceof Error ? err.message : 'Registration failed');
-      }
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setResending(true);
-    setError('');
-    try {
-      await api.post('/auth/verify-email/resend', { email });
-      setResent(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not resend the confirmation email.');
-    } finally {
-      setResending(false);
     }
   };
 
@@ -158,18 +139,8 @@ export default function Register() {
             {registrationComplete ? (
               <div className="space-y-4 text-center" aria-live="polite">
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-900">
-                  {emailDeliveryFailed
-                    ? <>Your account was created, but the confirmation email could not be delivered. Try sending it again to <strong>{email}</strong>.</>
-                    : <>Check <strong>{email}</strong> for a confirmation link. You must confirm your email before signing in.</>}
+                  {registrationMessage}
                 </div>
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={resending || resent}
-                  className="text-sm font-semibold text-brand-600 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {resent ? 'Confirmation email sent' : resending ? 'Sending…' : 'Resend confirmation email'}
-                </button>
                 <p><Link to="/login" className="text-sm font-semibold text-brand-600 hover:text-brand-700">Back to sign in</Link></p>
               </div>
             ) : <form onSubmit={handleSubmit} className="space-y-4">

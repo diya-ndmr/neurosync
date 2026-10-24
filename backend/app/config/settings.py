@@ -1,6 +1,5 @@
 import os
 from typing import Literal, Optional
-from email.utils import parseaddr
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,11 +17,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 480
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     firebase_credentials_path: Optional[str] = None
-    firebase_project_id: Optional[str] = None
-    resend_api_key: Optional[SecretStr] = None
+    firebase_project_id: Optional[str] = "neurosync-d7b3c"
     moodle_base_url: Optional[str] = None
     moodle_token: Optional[SecretStr] = None
-    resend_from_email: str = "NeuroSync <onboarding@resend.dev>"
     frontend_url: str = "http://localhost:5173"
     allow_demo_tokens: bool = True
     # Prototype-only simulated Microsoft SSO (no real Entra ID call is made).
@@ -42,11 +39,12 @@ class Settings(BaseSettings):
         if self.environment == "production":
             if self.mock_sso_enabled:
                 raise ValueError("Mock Microsoft SSO must be disabled in production")
-            if not self.resend_api_key:
-                raise ValueError("Production requires RESEND_API_KEY for account verification and password resets")
-            sender_email = parseaddr(self.resend_from_email)[1]
-            if not sender_email or sender_email.rsplit("@", 1)[-1].lower() == "resend.dev":
-                raise ValueError("Production requires a sender address on a verified email domain")
+            if not self.firebase_project_id:
+                raise ValueError("Production requires FIREBASE_PROJECT_ID")
+            if not self.firebase_credentials_path:
+                raise ValueError(
+                    "Production requires FIREBASE_CREDENTIALS_PATH to point to a Firebase Admin service-account secret file"
+                )
             if not self.frontend_url.startswith("https://"):
                 raise ValueError("Production requires an HTTPS FRONTEND_URL")
             if not self.sync_database_url.startswith(("postgresql://", "postgresql+")):

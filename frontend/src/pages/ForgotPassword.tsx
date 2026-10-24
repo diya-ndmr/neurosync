@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import NeoButton from '../components/Buttons/NeoButton';
-import { api } from '../services/api';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { firebaseErrorMessage, requireFirebaseAuth } from '../services/firebase';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -16,10 +17,10 @@ export default function ForgotPassword() {
     setLoading(true);
     setError('');
     try {
-      await api.post('/auth/forgot-password', { email });
+      await sendPasswordResetEmail(requireFirebaseAuth(), email);
       setSent(true);
-    } catch {
-      setError('We could not send the reset email. Please try again later.');
+    } catch (reason) {
+      setError(firebaseErrorMessage(reason));
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ export default function ForgotPassword() {
               </div>
               <p className="text-sm text-ink-soft text-center">
                 We've sent a password reset link to <strong className="text-ink">{email}</strong>.
-                The link expires in 30 minutes.
+                Follow Firebase's instructions to choose a new password.
               </p>
               <Link to="/login" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
                 Back to login

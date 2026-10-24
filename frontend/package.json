@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.0.18",
+    "firebase": "^13.1.0",
     "framer-motion": "^11.3.19",
     "lucide-react": "^0.441.0",
     "react": "^18.3.1",
@@ -30,4 +31,3 @@
     "vite-plugin-pwa": "^0.20.3"
   }
 }
-

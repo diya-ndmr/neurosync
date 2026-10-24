@@ -1,21 +1,15 @@
-import hashlib
-import logging
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config.settings import settings
 from app.database.connection import get_db
-from app.models.user import EmailVerificationToken, User, UserRole
+from app.models.user import User, UserRole
 from app.schemas.user_schema import (
-    EmailVerificationRequest,
-    ResendVerificationRequest,
     TokenResponse,
     UserLogin,
     UserRegister,
@@ -23,16 +17,25 @@ from app.schemas.user_schema import (
 )
 from app.services.authentication_service import hash_password, verify_password, create_access_token
 from app.services.audit_service import record_audit_event
-from app.services.email_service import EmailDeliveryError, send_verification_email
+from app.services.firebase_auth import InvalidFirebaseToken, verify_firebase_id_token
 from app.middleware.security import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-logger = logging.getLogger(__name__)
-VERIFICATION_TOKEN_LIFETIME = timedelta(hours=24)
-VERIFICATION_EMAIL_RESPONSE = {
-    "message": "If the account needs verification, a confirmation email has been sent."
-}
 PUBLIC_REGISTRATION_ROLES = ("student", "lecturer", "advisor")
+
+
+class FirebaseSessionRequest(BaseModel):
+    id_token: str = Field(min_length=1)
+
+
+def _session_response(user: User) -> TokenResponse:
+    return TokenResponse(
+        token=create_access_token(user.id),
+        user_id=user.id,
+        name=user.name,
+        role=user.role.value,
+        email=user.email,
+    )
 
 
 @router.get("/registration-options")
@@ -45,44 +48,18 @@ def registration_options():
     return {"roles": list(roles)}
 
 
-def _create_verification_token(db: Session, user_id: str) -> str:
-    db.query(EmailVerificationToken).filter(EmailVerificationToken.user_id == user_id).delete(
-        synchronize_session=False
-    )
-    token = secrets.token_urlsafe(32)
-    db.add(EmailVerificationToken(
-        user_id=user_id,
-        token_hash=hashlib.sha256(token.encode("utf-8")).hexdigest(),
-        expires_at=datetime.now(timezone.utc) + VERIFICATION_TOKEN_LIFETIME,
-    ))
-    db.commit()
-    return token
-
-
-def _send_verification_link(email: str, token: str) -> None:
-    verification_url = f"{settings.frontend_url.rstrip('/')}/verify-email?token={quote(token)}"
-    send_verification_email(email, verification_url)
-
-
-def _is_email_verified(db: Session, user_id: str) -> bool:
-    return db.query(EmailVerificationToken.id).filter(
-        EmailVerificationToken.user_id == user_id
-    ).first() is None
-
-
 @router.post("/register", response_model=dict)
 def register(data: UserRegister, db: Session = Depends(get_db)):
-    if settings.environment not in {"development", "test"} and data.role != "student":
+    if settings.environment not in {"development", "test"}:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Use Firebase Authentication to create accounts.",
+        )
+    if data.role not in PUBLIC_REGISTRATION_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Lecturer and advisor accounts must be provisioned by an administrator.",
         )
-    if not settings.resend_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Email verification is not configured. Please try again later.",
-        )
-
     email = str(data.email).strip().lower()
     existing = db.query(User).filter(func.lower(User.email) == email).first()
     if existing:
@@ -99,75 +76,72 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
         role=UserRole(data.role),
     )
     db.add(user)
-    db.flush()
-    token = _create_verification_token(db, user.id)
-    db.refresh(user)
-
-    try:
-        _send_verification_link(user.email, token)
-    except EmailDeliveryError as error:
-        logger.error("registration_verification_email_failed", extra={"user_id": user.id, "error": str(error)})
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Account created, but the confirmation email could not be sent. Request a new link to continue.",
-        ) from error
+    db.commit()
 
     return {
-        "message": "Account created. Check your email for a confirmation link before signing in.",
+        "message": "Development account created.",
         "user_id": user.id,
         "role": user.role.value,
     }
 
 
-@router.post("/verify-email")
-def verify_email(data: EmailVerificationRequest, db: Session = Depends(get_db)):
-    token_hash = hashlib.sha256(data.token.encode("utf-8")).hexdigest()
-    verification = db.query(EmailVerificationToken).filter(
-        EmailVerificationToken.token_hash == token_hash
-    ).first()
-    if not verification:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation link is invalid or expired.")
-
-    expires_at = verification.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at <= datetime.now(timezone.utc):
-        db.delete(verification)
-        db.commit()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Confirmation link is invalid or expired.")
-
-    db.delete(verification)
-    db.commit()
-    return {"message": "Email confirmed. You can now sign in."}
-
-
-@router.post("/verify-email/resend")
-def resend_verification_email(data: ResendVerificationRequest, db: Session = Depends(get_db)):
-    if not settings.resend_api_key:
+@router.post("/firebase-session", response_model=TokenResponse)
+def firebase_session(data: FirebaseSessionRequest, request: Request, db: Session = Depends(get_db)):
+    try:
+        claims = verify_firebase_id_token(data.id_token)
+    except InvalidFirebaseToken as error:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Email verification is not configured. Please try again later.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate Firebase credentials.",
+        ) from error
+
+    email = claims.get("email")
+    uid = claims.get("uid")
+    if (
+        claims.get("email_verified") is not True
+        or not isinstance(email, str)
+        or not email.strip()
+        or not isinstance(uid, str)
+        or not uid
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="A verified Firebase email account is required.",
         )
 
-    email = str(data.email).strip().lower()
-    user = db.query(User).filter(func.lower(User.email) == email).first()
-    if not user or _is_email_verified(db, user.id):
-        return VERIFICATION_EMAIL_RESPONSE
+    normalized_email = email.strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
+    if user is None:
+        user = User(
+            id=str(uuid.uuid4()),
+            email=normalized_email,
+            name=str(claims.get("name") or normalized_email.split("@", 1)[0]),
+            password_hash=hash_password(secrets.token_urlsafe(48)),
+            role=UserRole.student,
+        )
+        db.add(user)
+        db.flush()
 
-    token = _create_verification_token(db, user.id)
-    try:
-        _send_verification_link(user.email, token)
-    except EmailDeliveryError as error:
-        logger.error("verification_resend_email_failed", extra={"user_id": user.id, "error": str(error)})
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Could not send the confirmation email. Please try again later.",
-        ) from error
-    return VERIFICATION_EMAIL_RESPONSE
+    record_audit_event(
+        db,
+        action="AUTH_LOGIN_FIREBASE",
+        outcome="SUCCESS",
+        actor_reference=user.email.lower(),
+        actor_id=user.id,
+        request_id=getattr(request.state, "request_id", None) or str(uuid.uuid4()),
+        source_ip=request.client.host if request.client else None,
+    )
+    db.commit()
+    return _session_response(user)
 
 
 @router.post("/login", response_model=TokenResponse)
 def login(data: UserLogin, request: Request, db: Session = Depends(get_db)):
+    if settings.environment not in {"development", "test"}:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Use Firebase Authentication to sign in.",
+        )
     request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
     user = db.query(User).filter(func.lower(User.email) == str(data.email).strip().lower()).first()
     if not user or not verify_password(data.password, user.password_hash):
@@ -185,22 +159,6 @@ def login(data: UserLogin, request: Request, db: Session = Depends(get_db)):
             detail="Invalid email or password",
         )
 
-    if not _is_email_verified(db, user.id):
-        record_audit_event(
-            db,
-            action="AUTH_LOGIN",
-            outcome="FAILURE",
-            actor_reference=user.email.lower(),
-            actor_id=user.id,
-            request_id=request_id,
-            source_ip=request.client.host if request.client else None,
-        )
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Confirm your email address before signing in.",
-        )
-
     token = create_access_token(user.id)
     record_audit_event(
         db,
@@ -213,13 +171,7 @@ def login(data: UserLogin, request: Request, db: Session = Depends(get_db)):
     )
     db.commit()
 
-    return TokenResponse(
-        token=token,
-        user_id=user.id,
-        name=user.name,
-        role=user.role.value,
-        email=user.email,
-    )
+    return TokenResponse(token=token, user_id=user.id, name=user.name, role=user.role.value, email=user.email)
 
 
 class MicrosoftMockSignIn(BaseModel):
@@ -233,7 +185,7 @@ def microsoft_mock_sign_in(data: MicrosoftMockSignIn, request: Request, db: Sess
     A real integration would validate an OIDC id_token from Microsoft; here the
     chosen account is trusted so the flow can be demonstrated end to end.
     """
-    if not settings.mock_sso_enabled:
+    if settings.environment not in {"development", "test"} or not settings.mock_sso_enabled:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     email = data.email.strip().lower()
     user = db.query(User).filter(func.lower(User.email) == email).first()
@@ -241,11 +193,6 @@ def microsoft_mock_sign_in(data: MicrosoftMockSignIn, request: Request, db: Sess
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="This Microsoft account is not linked to a NeuroSync user",
-        )
-    if not _is_email_verified(db, user.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Confirm your email address before signing in.",
         )
     record_audit_event(
         db,
