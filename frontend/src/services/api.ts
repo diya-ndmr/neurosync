@@ -1,4 +1,9 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const configuredApiUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, '');
+export const API_BASE = configuredApiUrl
+  ? configuredApiUrl.endsWith('/api')
+    ? configuredApiUrl
+    : `${configuredApiUrl}/api`
+  : '/api';
 
 export class ApiError extends Error {
   status: number;
@@ -50,4 +55,3 @@ export const api = {
   patch: <T>(path: string, body: unknown, token?: string) => request<T>(path, { method: 'PATCH', body, token }),
   delete: <T>(path: string, token?: string) => request<T>(path, { method: 'DELETE', token })
 };
-

@@ -26,7 +26,9 @@ services:
       - key: CORS_ORIGINS
         value: '["https://neurosync-frontend.onrender.com"]'
       - key: MOCK_LMS_DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: neurosync-lms-db
+          property: connectionString
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM_EMAIL
@@ -58,4 +60,8 @@ databases:
   - name: neurosync-db
     databaseName: neurosync
     user: neurosync_user
+    plan: free
+  - name: neurosync-lms-db
+    databaseName: neurosync_lms
+    user: neurosync_lms_user
     plan: free

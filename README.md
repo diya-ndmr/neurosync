@@ -60,6 +60,10 @@ Never commit `.env` files, Moodle tokens, email API keys, or local database file
 
 The repository pins Render to Python 3.11.9 in both `render.yaml` and `.python-version`. Deploying the Blueprint applies the `PYTHON_VERSION` setting automatically. For a manually created Render service, set the service environment variable `PYTHON_VERSION` to `3.11.9` in the Render dashboard; an existing dashboard value overrides the version file. Save the change and trigger **Save, rebuild, and deploy**, then confirm the build log shows Python 3.11.9.
 
+The Render Blueprint provisions separate PostgreSQL databases for the application and LMS data because both use table names such as `students`, `modules`, and `assessments`. For a manually configured service, set `DATABASE_URL` and `MOCK_LMS_DATABASE_URL` to the respective PostgreSQL connection strings. Do not point both variables to the same database or set either to SQLite in production. `ENVIRONMENT` must be `production`.
+
+The frontend accepts the backend's base URL in `VITE_API_URL` and adds `/api` automatically; do not append `/api` twice. The Blueprint supplies the backend URL from the Render service.
+
 Configure the backend service's Root Directory and commands consistently:
 
 | Root Directory | Build Command | Start Command |

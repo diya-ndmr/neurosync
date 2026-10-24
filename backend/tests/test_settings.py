@@ -42,6 +42,7 @@ def test_production_settings_accept_explicit_secure_configuration():
         {"frontend_url": "http://portal.example.edu"},
         {"database_url": "sqlite:///./database/neurosync.db"},
         {"mock_lms_database_url": "sqlite:///./database/lms.db"},
+        {"mock_lms_database_url": "postgresql://app-db.example.edu/neurosync"},
     ],
 )
 def test_production_settings_reject_insecure_configuration(overrides):

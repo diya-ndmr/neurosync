@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+import { API_BASE } from './api';
 
 export type CsvDataset = 'students' | 'modules' | 'attendance' | 'assessments';
 export type CsvExportDataset = CsvDataset | 'referrals' | 'interventions' | 'meetings' | 'workbook-intelligence';

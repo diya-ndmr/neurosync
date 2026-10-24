@@ -3,6 +3,7 @@ from email.utils import parseaddr
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
@@ -42,6 +43,21 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires a persistent PostgreSQL DATABASE_URL")
             if not self.mock_lms_database_url.startswith(("postgresql://", "postgres://", "postgresql+")):
                 raise ValueError("Production requires a persistent PostgreSQL MOCK_LMS_DATABASE_URL")
+            app_database = make_url(self.sync_database_url)
+            lms_database = make_url(self.mock_lms_database_url)
+            if (
+                app_database.host,
+                app_database.port or 5432,
+                app_database.database,
+            ) == (
+                lms_database.host,
+                lms_database.port or 5432,
+                lms_database.database,
+            ):
+                raise ValueError(
+                    "Production requires MOCK_LMS_DATABASE_URL to use a separate PostgreSQL database "
+                    "from DATABASE_URL"
+                )
             secret_lower = self.secret_key.lower()
             placeholder_markers = ("change-me", "replace-me", "placeholder", "neuro-sync-secret")
             if (
