@@ -1,0 +1,28 @@
+{
+  "results": {
+    "logistic_regression": {
+      "accuracy": 0.95,
+      "f1_weighted": 0.9507
+    },
+    "random_forest": {
+      "accuracy": 0.92,
+      "f1_weighted": 0.9169
+    },
+    "gradient_boosting": {
+      "accuracy": 0.92,
+      "f1_weighted": 0.918
+    }
+  },
+  "best_model": "logistic_regression",
+  "feature_list": [
+    "academic_average",
+    "assignment_completion",
+    "failed_module_count",
+    "attendance_percentage",
+    "attendance_change",
+    "study_hours_weekly",
+    "lms_activity_score",
+    "mood_average",
+    "stress_average"
+  ]
+}

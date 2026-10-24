@@ -1,0 +1,43 @@
+# Secrets and local environment files
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python environments and generated files
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+.venv/
+venv/
+env/
+ENV/
+
+# Local databases and database journals
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# JavaScript dependencies and build output
+node_modules/
+dist/
+build/
+
+# Test, type-checker, and coverage caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.tsbuildinfo
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+Desktop.ini
