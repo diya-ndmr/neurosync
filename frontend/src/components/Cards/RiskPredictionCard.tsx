@@ -11,6 +11,18 @@ interface Props {
 export default function RiskPredictionCard({ risk }: Props) {
   const [expanded, setExpanded] = useState(false);
   const { t } = useAccessibility();
+  if (!risk.id) {
+    return (
+      <section className="neo-card p-5 md:p-6">
+        <h3 className="font-semibold text-ns-text-primary">Risk assessment</h3>
+        <p className="mt-4 text-sm text-ns-text-secondary">{risk.explanation}</p>
+        <p className="mt-3 text-xs text-ns-text-muted">
+          A risk assessment will appear here when one has been generated from your recorded information.
+        </p>
+      </section>
+    );
+  }
+
   const color = riskColor(risk.risk_level);
   const score = risk.risk_score;
   const isMachineLearningPrediction = risk.model_version.startsWith('ml_');

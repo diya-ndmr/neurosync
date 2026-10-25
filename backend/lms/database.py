@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -9,9 +8,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_LMS_DB_PATH = ROOT_DIR / "database" / "mock_lms.db"
 from app.config.settings import settings
 
-CONFIGURED_LMS_DATABASE_URL = os.getenv("MOCK_LMS_DATABASE_URL")
-if CONFIGURED_LMS_DATABASE_URL is None and settings.mock_lms_database_url != "sqlite:///./database/mock_lms.db":
-    CONFIGURED_LMS_DATABASE_URL = settings.mock_lms_database_url
+CONFIGURED_LMS_DATABASE_URL = settings.lms_sync_database_url
 
 
 class LMSBase(DeclarativeBase):
@@ -43,6 +40,8 @@ def build_lms_session_factory(db_path: Optional[str] = None, database_url: Optio
 
 
 lms_engine, LMSSessionLocal = build_lms_session_factory(database_url=CONFIGURED_LMS_DATABASE_URL)
+if lms_engine.dialect.name == "postgresql":
+    LMSBase.metadata.schema = "mock_lms"
 
 
 def ensure_lms_db(db_path: Optional[str] = None) -> str:

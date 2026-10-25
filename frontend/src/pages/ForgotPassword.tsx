@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import NeoButton from '../components/Buttons/NeoButton';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { firebaseErrorMessage, requireFirebaseAuth } from '../services/firebase';
+import { requireSupabase, supabaseErrorMessage } from '../services/supabase';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -17,10 +16,13 @@ export default function ForgotPassword() {
     setLoading(true);
     setError('');
     try {
-      await sendPasswordResetEmail(requireFirebaseAuth(), email);
+      const { error: resetError } = await requireSupabase().auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      if (resetError) throw resetError;
       setSent(true);
     } catch (reason) {
-      setError(firebaseErrorMessage(reason));
+      setError(supabaseErrorMessage(reason));
     } finally {
       setLoading(false);
     }
@@ -64,7 +66,7 @@ export default function ForgotPassword() {
               </div>
               <p className="text-sm text-ink-soft text-center">
                 We've sent a password reset link to <strong className="text-ink">{email}</strong>.
-                Follow Firebase's instructions to choose a new password.
+                Follow Supabase's instructions to choose a new password.
               </p>
               <Link to="/login" className="text-sm font-semibold text-brand-600 hover:text-brand-700">
                 Back to login

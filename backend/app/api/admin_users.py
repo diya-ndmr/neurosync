@@ -69,7 +69,7 @@ def provision_staff_account(
     return {
         "message": (
             f"{data.role.title()} role reserved for {email}. "
-            "Ask them to create a Firebase account with this verified email address."
+            "Ask them to create a Supabase account with this verified email address."
         ),
         "user_id": user.id,
         "role": user.role.value,

@@ -3,21 +3,20 @@ from typing import Literal, Optional
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     environment: Literal["development", "test", "staging", "production"] = "development"
     database_url: str = "sqlite:///./neurosync.db"
-    mock_lms_database_url: str = "sqlite:///./database/neurosync_workbook.db"
+    mock_lms_database_url: Optional[str] = None
     secret_key: str = "neuro-sync-secret-key-change-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 480
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
-    firebase_credentials_path: Optional[str] = None
-    firebase_project_id: Optional[str] = "neurosync-d7b3c"
+    supabase_url: Optional[str] = None
+    supabase_anon_key: Optional[SecretStr] = None
     moodle_base_url: Optional[str] = None
     moodle_token: Optional[SecretStr] = None
     frontend_url: str = "http://localhost:5173"
@@ -39,33 +38,16 @@ class Settings(BaseSettings):
         if self.environment == "production":
             if self.mock_sso_enabled:
                 raise ValueError("Mock Microsoft SSO must be disabled in production")
-            if not self.firebase_project_id:
-                raise ValueError("Production requires FIREBASE_PROJECT_ID")
-            if not self.firebase_credentials_path:
-                raise ValueError(
-                    "Production requires FIREBASE_CREDENTIALS_PATH to point to a Firebase Admin service-account secret file"
-                )
+            if not self.supabase_url or not self.supabase_url.startswith("https://"):
+                raise ValueError("Production requires an HTTPS SUPABASE_URL")
+            if not self.supabase_anon_key or not self.supabase_anon_key.get_secret_value():
+                raise ValueError("Production requires SUPABASE_ANON_KEY")
             if not self.frontend_url.startswith("https://"):
                 raise ValueError("Production requires an HTTPS FRONTEND_URL")
             if not self.sync_database_url.startswith(("postgresql://", "postgresql+")):
                 raise ValueError("Production requires a persistent PostgreSQL DATABASE_URL")
-            if not self.mock_lms_database_url.startswith(("postgresql://", "postgres://", "postgresql+")):
-                raise ValueError("Production requires a persistent PostgreSQL MOCK_LMS_DATABASE_URL")
-            app_database = make_url(self.sync_database_url)
-            lms_database = make_url(self.mock_lms_database_url)
-            if (
-                app_database.host,
-                app_database.port or 5432,
-                app_database.database,
-            ) == (
-                lms_database.host,
-                lms_database.port or 5432,
-                lms_database.database,
-            ):
-                raise ValueError(
-                    "Production requires MOCK_LMS_DATABASE_URL to use a separate PostgreSQL database "
-                    "from DATABASE_URL"
-                )
+            if not self.lms_sync_database_url.startswith(("postgresql://", "postgresql+")):
+                raise ValueError("Production requires persistent PostgreSQL for LMS data")
             secret_lower = self.secret_key.lower()
             placeholder_markers = ("change-me", "replace-me", "placeholder", "neuro-sync-secret")
             if (
@@ -86,6 +68,18 @@ class Settings(BaseSettings):
         if self.database_url.startswith("postgres://"):
             return self.database_url.replace("postgres://", "postgresql://", 1)
         return self.database_url
+
+    @property
+    def lms_sync_database_url(self) -> str:
+        """Use a separate LMS schema on Supabase when no second database is configured."""
+        configured_url = self.mock_lms_database_url
+        if configured_url:
+            if configured_url.startswith("postgres://"):
+                return configured_url.replace("postgres://", "postgresql://", 1)
+            return configured_url
+        if self.environment == "production":
+            return self.sync_database_url
+        return "sqlite:///./database/neurosync_workbook.db"
 
 
 settings = Settings()

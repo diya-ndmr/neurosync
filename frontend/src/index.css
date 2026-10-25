@@ -220,6 +220,61 @@
   background: var(--ns-background);
 }
 
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --ns-background: #11191d;
+  --ns-background-rgb: 17 25 29;
+  --ns-surface: #1b262b;
+  --ns-surface-rgb: 27 38 43;
+  --ns-surface-secondary: #243238;
+  --ns-surface-secondary-rgb: 36 50 56;
+  --ns-text-primary: #edf3f5;
+  --ns-text-primary-rgb: 237 243 245;
+  --ns-text-secondary: #c0cdd2;
+  --ns-text-secondary-rgb: 192 205 210;
+  --ns-text-muted: #a3b2b8;
+  --ns-text-muted-rgb: 163 178 184;
+  --ns-border: #3b4b52;
+  --ns-border-rgb: 59 75 82;
+  --ns-divider: #304047;
+  --ns-divider-rgb: 48 64 71;
+  --ns-primary-100-rgb: 48 64 71;
+  --ns-primary-200-rgb: 59 75 82;
+  --ns-primary-300-rgb: 83 103 111;
+  --ns-primary-800-rgb: 178 205 212;
+  --ns-primary-900-rgb: 211 225 229;
+  --ns-primary-950-rgb: 231 239 241;
+}
+
+html[data-theme='dark'] body {
+  color: var(--ns-text-primary);
+}
+
+html[data-theme='dark'] .neo-card,
+html[data-theme='dark'] .neo-card-pressed,
+html[data-theme='dark'] input,
+html[data-theme='dark'] select,
+html[data-theme='dark'] textarea,
+html[data-theme='dark'] [class~='bg-white'],
+html[data-theme='dark'] [class~='bg-white/60'],
+html[data-theme='dark'] [class~='bg-mint-50/70'] {
+  background-color: var(--ns-surface);
+  color: var(--ns-text-primary);
+  border-color: var(--ns-border);
+}
+
+html[data-theme='dark'] .page-content {
+  color: var(--ns-text-primary);
+}
+
+html[data-layout='compact'] .page-content .neo-card {
+  padding: 0.875rem;
+}
+
+html[data-personalized-text-size='large'] body {
+  font-size: 1.0625rem;
+}
+
 .glass {
   background: var(--ns-surface);
   border-color: var(--ns-border);

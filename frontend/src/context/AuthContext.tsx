@@ -1,14 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import {
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  signInWithEmailAndPassword,
-  signOut,
-  updateProfile
-} from 'firebase/auth';
 import type { Role, User } from '../types';
 import { api } from '../services/api';
-import { firebaseAuth, firebaseErrorMessage, requireFirebaseAuth } from '../services/firebase';
+import { requireSupabase, supabase, supabaseErrorMessage } from '../services/supabase';
 
 interface AuthState {
   user: User | null;
@@ -78,25 +71,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (import.meta.env.DEV) {
       data = await api.post<SessionResponse>('/auth/login', { email, password });
     } else {
-      const auth = requireFirebaseAuth();
-      const credential = await signInWithEmailAndPassword(auth, email, password).catch((error: unknown) => {
-        throw new Error(firebaseErrorMessage(error));
-      });
-      if (!credential.user.emailVerified) {
-        try {
-          await sendEmailVerification(credential.user);
-        } catch (error) {
-          throw new Error(firebaseErrorMessage(error));
-        } finally {
-          await signOut(auth);
-        }
-        throw new Error('Verify your email using the link Firebase sent before signing in.');
-      }
-      const idToken = await credential.user.getIdToken();
+      const client = requireSupabase();
+      const { data: authData, error: authError } = await client.auth.signInWithPassword({ email, password });
+      if (authError) throw new Error(supabaseErrorMessage(authError));
+      if (!authData.session) throw new Error('No authenticated session was returned. Check your email verification.');
       try {
-        data = await api.post<SessionResponse>('/auth/firebase-session', { id_token: idToken });
+        data = await api.post<SessionResponse>('/auth/supabase-session', {
+          access_token: authData.session.access_token
+        });
       } catch (error) {
-        await signOut(auth);
+        await client.auth.signOut();
         throw error;
       }
     }
@@ -133,27 +117,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return result.message;
     }
 
-    const auth = requireFirebaseAuth();
-    try {
-      const credential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      await updateProfile(credential.user, { displayName: data.name });
-      await sendEmailVerification(credential.user);
-    } catch (error) {
-      throw new Error(firebaseErrorMessage(error));
-    } finally {
-      await signOut(auth);
-    }
-    return 'Account created. Click the verification link Firebase emailed to you, then sign in.';
+    const { error } = await requireSupabase().auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: { full_name: data.name },
+        emailRedirectTo: `${window.location.origin}/login`
+      }
+    });
+    if (error) throw new Error(supabaseErrorMessage(error));
+    return 'Account created. Click the verification link Supabase emailed to you, then sign in.';
   };
 
   const logout = async () => {
-    if (firebaseAuth) {
-      await signOut(requireFirebaseAuth());
-    }
+    const signOutError = supabase ? (await supabase.auth.signOut()).error : null;
     localStorage.removeItem(STORAGE_KEYS.token);
     localStorage.removeItem(STORAGE_KEYS.user);
     setToken(null);
     setUser(null);
+    if (signOutError) throw new Error(supabaseErrorMessage(signOutError));
   };
 
   const updateUser = (u: User) => {

@@ -5,9 +5,10 @@ import type { StudentProfile } from '../../types';
 
 interface Props {
   student?: StudentProfile;
+  academicStatus?: string;
 }
 
-export default function WelcomeCard({ student }: Props) {
+export default function WelcomeCard({ student, academicStatus = 'Good standing' }: Props) {
   const { user } = useAuth();
   const name = user?.name || student?.first_name || 'there';
   const programme = student?.programme || 'Bachelor of Information Technology';
@@ -32,10 +33,10 @@ export default function WelcomeCard({ student }: Props) {
             {programme}
           </span>
           <span className="neo-chip bg-ns-surface-secondary text-ns-text-secondary">
-            Year {year}
+            {year > 0 ? `Year ${year}` : 'Year not provided'}
           </span>
           <span className="neo-chip bg-ns-surface-secondary text-ns-text-secondary">
-            Academic status: {isAtRisk ? 'Needs attention' : 'Good standing'}
+            Academic status: {academicStatus === 'Good standing' && isAtRisk ? 'Needs attention' : academicStatus}
           </span>
         </div>
 

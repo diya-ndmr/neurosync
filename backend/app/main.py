@@ -24,13 +24,14 @@ from app.api import (
     workflow,
     support_requests,
     moodle,
+    enhancements,
 )
 from lms.database import CONFIGURED_LMS_DATABASE_URL, LMSBase, LMSSessionLocal, lms_engine
 from lms.generator import ensure_mock_lms_seeded, lms_dataset_is_seeded
 import lms.models
 from lms.workflow_service import ensure_fictional_student_emails
 from app.observability import RequestObservabilityMiddleware, get_app_logger
-from app.services.firebase_auth import get_firebase_app
+from sqlalchemy import text
 import os
 
 logger = get_app_logger()
@@ -52,11 +53,11 @@ app.add_middleware(
 )
 app.add_middleware(RequestObservabilityMiddleware)
 
-if settings.environment == "production":
-    get_firebase_app()
-
 # Create tables
 Base.metadata.create_all(bind=engine)
+if LMSBase.metadata.schema:
+    with lms_engine.begin() as connection:
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS mock_lms"))
 LMSBase.metadata.create_all(bind=lms_engine)
 
 # Bootstrap the synthetic Mock LMS dataset on first run so every lecturer and
@@ -99,6 +100,7 @@ app.include_router(health.router)
 app.include_router(students.router)
 app.include_router(assessments.router)
 app.include_router(attendance.router)
+app.include_router(enhancements.router)
 app.include_router(wellbeing.router)
 app.include_router(predictions.router)
 app.include_router(analytics.router)

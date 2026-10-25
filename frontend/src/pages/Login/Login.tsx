@@ -30,6 +30,7 @@ export default function Login() {
   const showDemo = import.meta.env.DEV && demoProfiles.length > 0 && MicrosoftSignIn !== null;
 
   const sessionExpired = (location.state as { reason?: string } | null)?.reason === 'session-expired';
+  const passwordReset = (location.state as { passwordReset?: boolean } | null)?.passwordReset === true;
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -151,6 +152,11 @@ export default function Login() {
           {sessionExpired && !error && (
             <div role="status" className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 font-semibold">
               Your session expired. Please sign in again to continue.
+            </div>
+          )}
+          {passwordReset && (
+            <div role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 font-semibold">
+              Your password was updated. Sign in with your new password.
             </div>
           )}
 

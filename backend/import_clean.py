@@ -199,13 +199,13 @@ with open(output_file, 'w') as out:
         from app.config.settings import settings
         
         out.write(f"7. Preparing database\n")
-        db_path = settings.mock_lms_database_url.replace('sqlite:///', '')
+        db_path = settings.lms_sync_database_url.replace('sqlite:///', '')
         if os.path.exists(db_path):
             os.unlink(db_path)
             out.write(f"   Cleared existing database\n")
         
         out.write(f"\n8. Importing...\n\n")
-        result = import_student_workbook(new_wb_path, settings.mock_lms_database_url)
+        result = import_student_workbook(new_wb_path, settings.lms_sync_database_url)
 
         # Preserve operational intelligence from the workbook's case sheets.
         from datetime import date

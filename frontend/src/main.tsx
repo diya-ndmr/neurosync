@@ -5,6 +5,7 @@ import { registerSW } from 'virtual:pwa-register';
 import { router } from './routes';
 import { AuthProvider } from './context/AuthContext';
 import { AccessibilityProvider } from './context/AccessibilityContext';
+import { PersonalizationProvider } from './context/PersonalizationContext';
 import { ToastProvider } from './components/Toast';
 import './index.css';
 
@@ -15,11 +16,12 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <AccessibilityProvider>
-        <ToastProvider>
-          <RouterProvider router={router} />
-        </ToastProvider>
+        <PersonalizationProvider>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </PersonalizationProvider>
       </AccessibilityProvider>
     </AuthProvider>
   </StrictMode>
 );
-

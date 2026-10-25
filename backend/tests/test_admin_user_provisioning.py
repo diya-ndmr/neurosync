@@ -58,7 +58,7 @@ def admin_client(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("role", ["lecturer", "advisor"])
-def test_admin_reserves_staff_role_for_firebase_verified_account(admin_client, role):
+def test_admin_reserves_staff_role_for_supabase_verified_account(admin_client, role):
     response = admin_client.post(
         "/api/admin/users/provision",
         headers=admin_client.admin_headers,
@@ -67,7 +67,7 @@ def test_admin_reserves_staff_role_for_firebase_verified_account(admin_client, r
 
     assert response.status_code == 201, response.text
     assert response.json()["role"] == role
-    assert "Firebase account" in response.json()["message"]
+    assert "Supabase account" in response.json()["message"]
     assert f"{role}@example.edu" in response.json()["message"]
 
     with admin_client.session_factory() as db:

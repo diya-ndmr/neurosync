@@ -25,19 +25,23 @@ const roleNav: Record<Role, NavItem[]> = {
   lecturer: [
     { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/lecturer/dashboard' },
     { label: 'Students needing support', translationKey: 'navigation.students', path: '/lecturer/students' },
-    { label: 'Class performance', translationKey: 'navigation.analytics', path: '/lecturer/analytics' }
+    { label: 'Class performance', translationKey: 'navigation.analytics', path: '/lecturer/analytics' },
+    { label: 'Learning support', path: '/lecturer/learning-support' },
+    { label: 'Class attendance', path: '/lecturer/attendance' }
   ],
   advisor: [
     { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/advisor/dashboard' },
     { label: 'Student Cases', translationKey: 'navigation.cases', path: '/advisor/cases' },
-    { label: 'Interventions', translationKey: 'navigation.interventions', path: '/advisor/interventions' }
+    { label: 'Interventions', translationKey: 'navigation.interventions', path: '/advisor/interventions' },
+    { label: 'Wellness appointments', path: '/advisor/wellness-appointments' }
   ],
   admin: [
     { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/admin/dashboard' },
     { label: 'University overview', translationKey: 'navigation.universityOverview', path: '/admin/analytics' },
     { label: 'User Management', translationKey: 'navigation.userManagement', path: '/admin/users' },
     { label: 'CSV data', path: '/admin/csv-data' },
-    { label: 'System Configuration', translationKey: 'navigation.systemConfiguration', path: '/admin/settings' }
+    { label: 'System Configuration', translationKey: 'navigation.systemConfiguration', path: '/admin/settings' },
+    { label: 'Wellness appointments', path: '/admin/wellness-appointments' }
   ]
 };
 

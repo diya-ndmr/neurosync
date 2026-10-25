@@ -27,7 +27,6 @@ def get_student_dashboard(db: Session, student_id: str) -> dict:
         db.query(func.avg(Assessment.mark))
         .filter(Assessment.student_id == student_id)
         .scalar()
-        or 0
     )
 
     # Build monthly performance history
@@ -37,17 +36,18 @@ def get_student_dashboard(db: Session, student_id: str) -> dict:
     module_breakdown = _build_module_breakdown(db, student_id)
 
     # Determine trend
-    if len(performance_history) >= 2:
-        recent = performance_history[-1]["average"]
-        previous = performance_history[-2]["average"]
-        if recent > previous + 2:
+    # Compare the earlier half of all graded assessments with the later half,
+    # so one noisy month does not flip the trend.
+    graded = [a for a in reversed(assessments) if a.mark is not None]
+    trend = "stable"
+    if len(graded) >= 6:
+        mid = len(graded) // 2
+        earlier = sum(a.mark for a in graded[:mid]) / mid
+        later = sum(a.mark for a in graded[mid:]) / (len(graded) - mid)
+        if later > earlier + 5:
             trend = "improving"
-        elif recent < previous - 2:
+        elif later < earlier - 5:
             trend = "declining"
-        else:
-            trend = "stable"
-    else:
-        trend = "stable"
 
     # Attendance
     attendance_records = (
@@ -112,7 +112,7 @@ def get_student_dashboard(db: Session, student_id: str) -> dict:
             "created_at": student.created_at.isoformat() if student.created_at else "",
         },
         "performance": {
-            "current_average": round(current_avg, 1),
+            "current_average": round(float(current_avg), 1) if current_avg is not None else None,
             "trend": trend,
             "history": performance_history,
             "module_breakdown": module_breakdown,
@@ -195,15 +195,25 @@ def _build_attendance_history(db: Session, student_id: str) -> list[dict]:
 
 def _format_risk(risk: Optional[RiskPrediction]) -> dict:
     if not risk:
-        return {"risk_level": "LOW", "risk_score": 0, "explanation": "Insufficient data.", "factors": []}
+        return {
+            "risk_level": "LOW",
+            "risk_score": 0,
+            "explanation": "No risk assessment has been generated.",
+            "factors": [],
+            "model_version": "not_generated",
+            "created_at": "",
+        }
+    factors = [{"factor": "Data-driven risk assessment", "impact": "High", "direction": "increase"}]
+    if risk.model_version == "extended_data_import_v1":
+        prefix = "Primary recorded risk factor: "
+        factor = risk.explanation.removeprefix(prefix).split(".", 1)[0]
+        factors = [{"factor": factor, "impact": "Recorded", "direction": "increase"}]
     return {
         "id": risk.id,
         "risk_score": risk.risk_score,
         "risk_level": risk.risk_level.value,
         "explanation": risk.explanation,
-        "factors": [
-            {"factor": "Data-driven risk assessment", "impact": "High", "direction": "increase"}
-        ],
+        "factors": factors,
         "model_version": risk.model_version,
         "created_at": risk.created_at.isoformat() if risk.created_at else "",
     }

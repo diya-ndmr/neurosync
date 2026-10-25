@@ -89,6 +89,22 @@ export default function StudentReview() {
     }
   };
 
+  const recommendWellness = async () => {
+    const studentMessage = window.prompt(
+      'Add a supportive message inviting the student to speak with Student Wellness:',
+      'Your university recommends speaking with a Student Wellness professional. You can book a confidential appointment through your recommendations.'
+    );
+    if (!studentMessage?.trim()) return;
+    try {
+      await api.post('/wellbeing/referrals', { student_id: studentId, student_message: studentMessage.trim() }, token || undefined);
+      showToast('Student Wellness support recommendation recorded.');
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : 'Could not record the Wellness recommendation.';
+      setError(message);
+      showToast(message, 'error');
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center gap-2 py-16 text-sm text-ink-soft"><LoaderCircle className="animate-spin" />Loading authorised LMS profile…</div>;
   if (error && !review) return <div className="neo-card p-6" role="alert"><p className="text-ns-danger">{error}</p><Link className="mt-4 inline-block text-brand-800" to="/lecturer/students">Back to students</Link></div>;
   if (!review) return null;
@@ -126,7 +142,8 @@ export default function StudentReview() {
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`neo-chip ${riskBg(review.risk.risk_level)}`}>Risk: {review.risk.risk_level} · {review.risk.risk_score}%</span>
             {!isAdminProfile && <><NeoButton variant="secondary" onClick={continueMonitoring}><Eye size={15} className="mr-1.5 inline" />Continue monitoring</NeoButton>
-            <NeoButton variant="secondary" onClick={() => setReferralOpen(true)}><MessageSquarePlus size={16} className="mr-1.5 inline" />Refer to advisor</NeoButton></>}
+            <NeoButton variant="secondary" onClick={() => setReferralOpen(true)}><MessageSquarePlus size={16} className="mr-1.5 inline" />Refer to advisor</NeoButton>
+            <NeoButton variant="secondary" onClick={() => void recommendWellness()}><MessageSquarePlus size={16} className="mr-1.5 inline" />Recommend Wellness</NeoButton></>}
           </div>
         </div>
         <div className="mt-5 grid grid-cols-2 lg:grid-cols-5 gap-3">

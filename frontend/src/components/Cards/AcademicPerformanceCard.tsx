@@ -4,7 +4,7 @@ import type { PerformancePoint } from '../../types';
 import { cn } from '../../utils/helpers';
 
 interface Props {
-  average: number;
+  average: number | null;
   trend: 'improving' | 'declining' | 'stable';
   history: PerformancePoint[];
 }
@@ -29,17 +29,16 @@ export default function AcademicPerformanceCard({ average, trend, history }: Pro
           <h3 className="font-semibold text-ink">Academic performance</h3>
           <p className="text-xs text-ink-faint">Current average across modules</p>
         </div>
-        <span className={cn('flex items-center gap-1 text-sm font-bold', meta.color)}>
-          {meta.label}
-        </span>
+        {average !== null && <span className={cn('flex items-center gap-1 text-sm font-bold', meta.color)}>{meta.label}</span>}
       </div>
 
       <div className="flex items-end gap-3 mb-2">
-        <span className="text-4xl font-extrabold text-ink">{average}%</span>
-        <span className="text-sm font-medium text-emerald-600 mb-1.5">↑ {trend === 'improving' ? '+2.5%' : 'stable'}</span>
+        <span className="text-4xl font-extrabold text-ink">{average === null ? '—' : `${average}%`}</span>
       </div>
 
-      <div className="h-48 mt-2">
+      {history.length === 0 ? (
+        <p className="mt-4 text-sm text-ink-faint">No graded assessments are available yet.</p>
+      ) : <div className="h-48 mt-2">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={history} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>
@@ -64,7 +63,7 @@ export default function AcademicPerformanceCard({ average, trend, history }: Pro
             <Area type="monotone" dataKey="average" stroke="var(--ns-primary-dark)" strokeWidth={2.5} fill="url(#perfGrad)" />
           </AreaChart>
         </ResponsiveContainer>
-      </div>
+      </div>}
     </motion.div>
   );
 }

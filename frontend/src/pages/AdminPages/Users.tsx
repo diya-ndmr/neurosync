@@ -138,7 +138,7 @@ export default function UsersPage() {
         aria-labelledby="provision-staff-heading"
       >
         <h2 id="provision-staff-heading" className="text-lg font-semibold text-ink">Provision staff account</h2>
-        <p className="mt-1 text-sm text-ink-soft">Reserve a lecturer or advisor role for an email address. The account holder must create a Firebase account and verify that same address before signing in.</p>
+        <p className="mt-1 text-sm text-ink-soft">Reserve a lecturer or advisor role for an email address. The account holder must create a Supabase account and verify that same address before signing in.</p>
         <form onSubmit={provisionStaffAccount} className="mt-4 grid gap-3 md:grid-cols-4">
           <label className="text-sm font-medium text-ink">
             Full name

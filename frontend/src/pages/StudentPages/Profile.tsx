@@ -37,7 +37,9 @@ export default function Profile() {
           <p className="text-sm text-ink-faint">{student.student_number}</p>
           <div className="mt-4 w-full space-y-2">
             <div className="neo-chip bg-ns-surface-secondary text-ns-text-secondary w-fit mx-auto capitalize">{user?.role || 'student'}</div>
-            <div className="neo-chip bg-ns-surface-secondary text-ns-text-secondary w-fit mx-auto">Year {student.year_level}</div>
+            <div className="neo-chip bg-ns-surface-secondary text-ns-text-secondary w-fit mx-auto">
+              {student.year_level > 0 ? `Year ${student.year_level}` : 'Year not provided'}
+            </div>
           </div>
           <div className="mt-5 w-full rounded-lg bg-ns-surface-secondary border border-ns-border p-4">
             <p className="text-xs text-ink-faint">Member since</p>

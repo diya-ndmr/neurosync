@@ -8,11 +8,40 @@ The project began as a Microsoft Fabric university intelligence platform. This r
 
 - Role-based student, lecturer, advisor, and administrator experiences.
 - Student records, attendance, assessments, referrals, interventions, meetings, and follow-ups.
+- Topic-level lecturer feedback and assigned learning resources, with student resource progress and explainable recommendations.
+- Class-by-class attendance with a rolling 90-day summary; excused and approved-leave sessions are excluded from rates.
+- Referral-gated Wellness appointment booking and support-team follow-up management.
+- Account-persisted appearance, layout, and study-notification preferences.
 - CSV dataset import/export workflows.
 - Student risk analysis and intervention recommendations.
-- Firebase Authentication for production email/password sign-in, email verification, and password recovery.
+- Supabase Auth for production email/password sign-in, email verification, and password recovery.
 - Optional local Moodle REST connection check. Moodle remains optional; the connection check does not synchronize course, enrolment, assignment, or grade data.
 - Synthetic demo profiles and student risk data for local development.
+
+## Bundled synthetic data pack
+
+The supplied `backend/datasets/NeuroSync_Complete_CSV_Data_Pack.zip` contains 500 students, 36 modules, 110,112 class-attendance records, 8,000 assessments, 1,710 lecturer-feedback rows, 883 learning resources, and 90 historical Wellness bookings. It is imported explicitly rather than replacing application data at startup.
+
+To explicitly import or replace the local demo dataset from the `backend` directory, run:
+
+```powershell
+python -m lms.complete_data_pack_import
+python -m lms.complete_data_pack_import --replace
+```
+
+The complete-pack importer is content-hash idempotent. `--replace` is destructive to existing demo-domain data; do not use it against a populated production database. Production startup does not automatically seed or replace data. The archive's password-hash placeholders are ignored. Imported appointment records do not expose counselling details.
+
+### Separate extended cohort
+
+`backend/datasets/NeuroSync_Extended_Data.zip` is a separate 50-student cohort whose student and assessment identifiers overlap with, but do not identify, the complete-pack students. Import it only as a separate cohort; the importer namespaces its student IDs with `EXT-` and refuses email collisions. Duplicate emails in the source roster are given a `+ext-<student-id>` login suffix so each student account remains unique. The supplied roster creates local student accounts with the configured initial password. For local demo use, set it to `demo1234`:
+
+```powershell
+$env:NEUROSYNC_EXTENDED_INITIAL_PASSWORD = 'demo1234'
+python -m lms.extended_data_import
+Remove-Item Env:NEUROSYNC_EXTENDED_INITIAL_PASSWORD
+```
+
+The import connects risk predictions, mood check-ins, study-session durations, recommendations, feedback text, and quiz question outcomes to the new accounts. Phone numbers are not imported. The bundle does not contain module names, assessment titles, assessment dates, or marks for its external assessment IDs, so those fields are not fabricated; quiz correctness is displayed only as recorded and is not treated as mastery. No attendance or Wellness referrals are included, so those sections remain accurately unrecorded and Wellness booking stays referral-gated.
 
 ## Technology
 
@@ -39,6 +68,10 @@ python -m uvicorn app.main:app --reload --port 8000
 
 The API is available at `http://localhost:8000`; its OpenAPI docs are at `http://localhost:8000/docs`.
 
+Learning documents are stored in the application database and served only after role and module-enrolment checks. Wellness appointment slots and bookings are managed by NeuroSync; no external university appointment-system connector is configured. Advisors and administrators manage availability and follow-ups, while lecturers cannot view private appointment details.
+
+Study-reminder and weekly-summary selections are persisted as account preferences. This repository does not currently include a notification scheduler or delivery provider.
+
 ### Frontend
 
 In a second terminal:
@@ -55,43 +88,71 @@ Open `http://localhost:5173`. The login page shows the available development dem
 
 To test a local Moodle connection, configure Moodle Web Services and REST, then create a dedicated integration account and a restricted service. Put `MOODLE_BASE_URL` and the Moodle-generated `MOODLE_TOKEN` in the private `backend/.env` file. The Admin Settings page can test `core_webservice_get_site_info`. See [the Moodle setup guide](backend/lms/moodle-integration.md) for details.
 
-Never commit `.env` files, Moodle tokens, Firebase service-account keys, or local database files. A safe environment template is provided at [backend/.env.example](backend/.env.example).
+Never commit `.env` files, database passwords, Supabase service-role keys, Moodle tokens, or local database files. A safe environment template is provided at [backend/.env.example](backend/.env.example).
 
-## Deploying the backend to Render
+## Deploying the backend to Render, database and auth to Supabase, and frontend to Netlify
 
-The repository pins Render to Python 3.11.9 in both `render.yaml` and `.python-version`. Deploying the Blueprint applies the `PYTHON_VERSION` setting automatically. For a manually created Render service, set the service environment variable `PYTHON_VERSION` to `3.11.9` in the Render dashboard; an existing dashboard value overrides the version file. Save the change and trigger **Save, rebuild, and deploy**, then confirm the build log shows Python 3.11.9.
+### 1. Create Supabase project
 
-The Render Blueprint provisions separate PostgreSQL databases for the application and LMS data because both use table names such as `students`, `modules`, and `assessments`. For a manually configured service, set `DATABASE_URL` and `MOCK_LMS_DATABASE_URL` to the respective PostgreSQL connection strings. Do not point both variables to the same database or set either to SQLite in production. `ENVIRONMENT` must be `production`.
+Create a Supabase project and save its project URL, public anon/publishable API key, and database password. In **Authentication → Providers**, enable Email and Password and leave email confirmation enabled. The backend checks the confirmed address with Supabase before creating a NeuroSync session.
 
-At startup, the backend detects Render's `RENDER`/`RENDER_SERVICE_ID` variables and refuses to run unless `ENVIRONMENT=production`. This prevents a missing or incorrect Render environment setting from silently using the local SQLite defaults; the resulting validation error points to the service configuration that needs correction.
+For database access, use the connection string shown by the Supabase dashboard's **Connect** button. Render is a persistent backend; use the direct connection if the Render region/network supports its IP version, or the Supabase **Session pooler** connection otherwise. Do not use the transaction pooler for this SQLAlchemy application. Replace the password placeholder and URL-encode special characters in the password. The application and mock LMS tables use the same Supabase database but are kept in separate schemas (`public` and `mock_lms`); the backend creates the `mock_lms` schema at startup.
 
-The frontend accepts the backend's base URL in `VITE_API_URL` and adds `/api` automatically; do not append `/api` twice. The Blueprint supplies the backend URL from the Render service.
+**Email delivery limitation:** Supabase's default Auth SMTP is for testing only. It only sends to project team members and is currently limited to about two messages per hour. To allow sign-up and password recovery for real users, configure a custom SMTP provider in **Authentication → SMTP Settings**. A provider may require a verified sender domain. Without custom SMTP, test only with an authorized team email. See [Supabase custom SMTP guidance](https://supabase.com/docs/guides/auth/auth-smtp).
 
-### Firebase Authentication setup
+### 2. Deploy the FastAPI backend to Render
 
-The production frontend uses the Firebase project `neurosync-d7b3c`. In the Firebase Console:
+The root [render.yaml](render.yaml) defines the backend only. In Render, use **New + → Blueprint**, connect this GitHub repository, select `main`, review the `neurosync-backend` service, and apply it. The Blueprint prompts for values marked `sync: false`; alternatively add them later under **neurosync-backend → Environment**:
 
-1. Enable **Authentication → Sign-in method → Email/Password**.
-2. Add the deployed frontend host (for example, `neurosync-frontend.onrender.com`, and the exact Vercel host if applicable) under **Authentication → Settings → Authorized domains**.
-3. Register a Firebase Web App and copy its `apiKey` and `appId`.
-4. Create a Firebase Admin SDK service-account JSON key for the same project. Keep this private.
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | Supabase PostgreSQL connection string from **Connect** |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase public anon/publishable key (never the service-role/secret key) |
+| `FRONTEND_URL` | Netlify production origin, e.g. `https://your-site.netlify.app` |
+| `CORS_ORIGINS` | JSON array of allowed frontend origins, e.g. `["https://your-site.netlify.app"]` |
 
-For Render, configure the backend service's **Environment** with `FIREBASE_PROJECT_ID=neurosync-d7b3c` and `FIREBASE_CREDENTIALS_PATH=/etc/secrets/neurosync-firebase-admin.json`. Under **Secret Files**, upload the service-account JSON with the exact filename `neurosync-firebase-admin.json`. Set `VITE_FIREBASE_API_KEY` and `VITE_FIREBASE_APP_ID` on the frontend static site from the Firebase Web App config. `VITE_FIREBASE_PROJECT_ID` and `VITE_FIREBASE_AUTH_DOMAIN` are already set by the Blueprint. These frontend values are public configuration; the service-account file is secret and must never be committed.
+The Blueprint also sets `ENVIRONMENT=production`, creates a strong `SECRET_KEY`, disables demo tokens and mock SSO, and pins Python to 3.11.9. Keep those settings. The backend URL shown in Render is needed for Netlify's `VITE_API_URL`.
 
-Firebase sends verification and password-reset emails using its default sender; no Resend account or custom sending domain is required. Public sign-up creates student accounts. For staff, an administrator first reserves the email and role in NeuroSync's User Management page; the staff member then creates and verifies a Firebase account using exactly that email. Existing NeuroSync records keep their roles when the verified Firebase email matches. Existing passwords are not migrated: users establish a new Firebase password through sign-up or Firebase password recovery.
+### 3. Deploy the frontend from GitHub to Netlify
 
-Configure the backend service's Root Directory and commands consistently:
+In Netlify, choose **Add new site → Import an existing project**, connect GitHub, select this repository, and deploy the `main` branch. The committed [netlify.toml](netlify.toml) configures the frontend build and single-page-app routes. Add these under **Site configuration → Environment variables** (or **Site settings → Environment variables**) for the Production context:
 
-| Root Directory | Build Command | Start Command |
-| --- | --- | --- |
-| `backend` | `pip install --upgrade pip && pip install -r requirements.txt` | `python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
-| Repository root (blank) | `cd backend && pip install --upgrade pip && pip install -r requirements.txt` | `cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| Variable | Value |
+| --- | --- |
+| `VITE_API_URL` | Render backend base URL, without `/api` |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase public anon/publishable key |
+
+Trigger a new Netlify deploy after adding variables because Vite embeds them during build. The public anon key is intended for frontend use; never use or expose the Supabase service-role key.
+
+### 4. Configure Auth redirect URLs and test
+
+In Supabase **Authentication → URL Configuration**, set **Site URL** to the Netlify production URL and add that exact URL plus `/login` and `/reset-password` as allowed redirect destinations (e.g. `https://your-site.netlify.app/**`). If you use a custom Netlify domain, use it consistently in these settings, Render's `FRONTEND_URL`/`CORS_ORIGINS`, and the browser.
+
+### 5. Migrate existing Render database data before cutover
+
+If the existing Render databases contain data, keep both databases running until the Supabase copy has been checked. Get each database's **external** PostgreSQL connection URL from its Render database page. Run the migration once, from a local PowerShell terminal, before any users sign up. It is okay if the backend has already created empty tables in Supabase:
+
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+$env:SOURCE_APP_DATABASE_URL = [System.Net.NetworkCredential]::new("", (Read-Host "Render app database URL" -AsSecureString)).Password
+$env:SOURCE_LMS_DATABASE_URL = [System.Net.NetworkCredential]::new("", (Read-Host "Render LMS database URL" -AsSecureString)).Password
+$env:SUPABASE_DATABASE_URL = [System.Net.NetworkCredential]::new("", (Read-Host "Supabase PostgreSQL URL" -AsSecureString)).Password
+python migrate_render_to_supabase.py
+Remove-Item Env:SOURCE_APP_DATABASE_URL, Env:SOURCE_LMS_DATABASE_URL, Env:SUPABASE_DATABASE_URL
+```
+
+Use the database connection URLs, not the Supabase project URL or API key. The script copies application tables into Supabase `public` and LMS tables into `mock_lms`, retaining foreign-key relationships. It reports table counts only, and it stops on conflicting rows rather than overwriting them. If the migration fails, keep the Render databases; inspect the error and do not delete either source. Verify the app and LMS data in the deployed site before manually deleting old Render databases. Previous email-provider credentials/passwords are not migrated; users create a new Supabase Auth account with the same verified email to retain their NeuroSync app role/data association.
+
+After both deploys finish, check `https://YOUR-RENDER-BACKEND/api/ready`. Register an account using an email address that can receive mail, click the confirmation link, then sign in and test password recovery. Public sign-up creates student accounts. For staff, an administrator reserves the email and role in NeuroSync first; the staff member signs up with that exact verified address.
 
 ## Tests and production build
 
 ```powershell
 cd backend
-python -m pytest tests
+python -m pytest
 ```
 
 ```powershell

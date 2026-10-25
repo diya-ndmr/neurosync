@@ -12,7 +12,8 @@ const categoryMeta = {
   academic: { label: 'Academic' },
   attendance: { label: 'Attendance' },
   wellbeing: { label: 'Wellbeing' },
-  study: { label: 'Study' }
+  study: { label: 'Study' },
+  administrative: { label: 'Administrative' }
 };
 
 export default function RecommendationCard({ recommendations, onComplete, completingId }: Props) {

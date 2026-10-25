@@ -15,7 +15,11 @@ class Assessment(Base):
     mark: Mapped[float] = mapped_column(Float, nullable=False)
     assessment_date: Mapped[date] = mapped_column(Date, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
-
+    title: Mapped[str | None] = mapped_column(String, nullable=True)
+    max_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str | None] = mapped_column(String, nullable=True)
+    feedback: Mapped[str | None] = mapped_column(String, nullable=True)
+    topic_name: Mapped[str | None] = mapped_column(String, nullable=True)
     # relationships
     student = relationship("StudentProfile", back_populates="assessments")
     module = relationship("Module", back_populates="assessments")

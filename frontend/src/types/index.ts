@@ -45,7 +45,7 @@ export interface MoodCheckin {
 }
 
 export interface RiskPrediction {
-  id: string;
+  id?: string;
   risk_score: number;
   risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
   explanation: string;
@@ -62,7 +62,7 @@ export interface RiskFactor {
 
 export interface Recommendation {
   id: string;
-  category: 'academic' | 'attendance' | 'wellbeing' | 'study';
+  category: 'academic' | 'attendance' | 'wellbeing' | 'study' | 'administrative';
   message: string;
   priority: 'high' | 'medium' | 'low';
   status: 'new' | 'completed' | 'in_progress';
@@ -77,7 +77,7 @@ export interface PerformancePoint {
 export interface StudentDashboardData {
   student: StudentProfile;
   performance: {
-    current_average: number;
+    current_average: number | null;
     trend: 'improving' | 'declining' | 'stable';
     history: PerformancePoint[];
     module_breakdown: { module: string; mark: number }[];
@@ -283,4 +283,3 @@ export interface AdminAnalytics {
   performance_trend: { month: string; average: number }[];
   programme_comparison: { programme: string; average: number; students: number }[];
 }
-

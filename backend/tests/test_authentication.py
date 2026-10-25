@@ -1,4 +1,4 @@
-"""Authentication tests for local development login and Firebase sessions."""
+"""Authentication tests for local development login and Supabase sessions."""
 
 import pytest
 from fastapi import FastAPI
@@ -12,7 +12,7 @@ from app.database.connection import Base, get_db
 from app.models.audit_event import AuditEvent
 from app.models.user import User, UserRole
 from app.services.authentication_service import hash_password, verify_password
-from app.services.firebase_auth import InvalidFirebaseToken
+from app.services.supabase_auth import InvalidSupabaseToken
 
 LEGACY_PASSLIB_HASH = "$2b$12$hFesLdUZtR82Bj1PaqkNveGw9vKW80pJlU.0CFQccLceMUPvsmqvG"
 
@@ -83,28 +83,28 @@ def test_development_registration_and_login(auth_client):
     ).status_code == 401
 
 
-def test_firebase_session_creates_verified_student(auth_client, monkeypatch):
+def test_supabase_session_creates_verified_student(auth_client, monkeypatch):
     monkeypatch.setattr(
         auth_api,
-        "verify_firebase_id_token",
+        "verify_supabase_access_token",
         lambda token: {
-            "uid": "firebase-student-1",
+            "uid": "supabase-student-1",
             "email": "STUDENT@example.edu",
             "email_verified": True,
-            "name": "Firebase Student",
+            "name": "Supabase Student",
         },
     )
-    response = auth_client.post("/api/auth/firebase-session", json={"id_token": "verified-token"})
+    response = auth_client.post("/api/auth/supabase-session", json={"access_token": "verified-token"})
     assert response.status_code == 200, response.text
     assert response.json()["role"] == "student"
-    assert response.json()["name"] == "Firebase Student"
+    assert response.json()["name"] == "Supabase Student"
 
     with auth_client.audit_session_factory() as db:
         user = db.query(User).filter_by(email="student@example.edu").one()
         assert user.role == UserRole.student
 
 
-def test_firebase_session_preserves_preprovisioned_role(auth_client, monkeypatch):
+def test_supabase_session_preserves_preprovisioned_role(auth_client, monkeypatch):
     with auth_client.audit_session_factory() as db:
         db.add(User(
             id="preprovisioned-lecturer",
@@ -117,34 +117,34 @@ def test_firebase_session_preserves_preprovisioned_role(auth_client, monkeypatch
 
     monkeypatch.setattr(
         auth_api,
-        "verify_firebase_id_token",
+        "verify_supabase_access_token",
         lambda _token: {
-            "uid": "firebase-lecturer-1",
+            "uid": "supabase-lecturer-1",
             "email": "LECTURER@example.edu",
             "email_verified": True,
-            "name": "Firebase Name",
+            "name": "Supabase Name",
         },
     )
-    response = auth_client.post("/api/auth/firebase-session", json={"id_token": "verified-token"})
+    response = auth_client.post("/api/auth/supabase-session", json={"access_token": "verified-token"})
     assert response.status_code == 200
     assert response.json()["role"] == "lecturer"
     assert response.json()["name"] == "Preprovisioned Lecturer"
 
 
-def test_firebase_session_rejects_unverified_or_invalid_tokens(auth_client, monkeypatch):
+def test_supabase_session_rejects_unverified_or_invalid_tokens(auth_client, monkeypatch):
     monkeypatch.setattr(
         auth_api,
-        "verify_firebase_id_token",
-        lambda _token: {"uid": "firebase-user", "email": "user@example.edu", "email_verified": False},
+        "verify_supabase_access_token",
+        lambda _token: {"uid": "supabase-user", "email": "user@example.edu", "email_verified": False},
     )
-    unverified = auth_client.post("/api/auth/firebase-session", json={"id_token": "unverified-token"})
+    unverified = auth_client.post("/api/auth/supabase-session", json={"access_token": "unverified-token"})
     assert unverified.status_code == 401
 
     def reject_token(_token):
-        raise InvalidFirebaseToken("invalid")
+        raise InvalidSupabaseToken("invalid")
 
-    monkeypatch.setattr(auth_api, "verify_firebase_id_token", reject_token)
-    invalid = auth_client.post("/api/auth/firebase-session", json={"id_token": "invalid-token"})
+    monkeypatch.setattr(auth_api, "verify_supabase_access_token", reject_token)
+    invalid = auth_client.post("/api/auth/supabase-session", json={"access_token": "invalid-token"})
     assert invalid.status_code == 401
 
 
@@ -195,22 +195,22 @@ def test_malformed_demo_tokens_are_401_not_500(auth_client):
         assert response.status_code == 401
 
 
-def test_firebase_login_is_audited_without_token_contents(auth_client, monkeypatch):
+def test_supabase_login_is_audited_without_token_contents(auth_client, monkeypatch):
     monkeypatch.setattr(
         auth_api,
-        "verify_firebase_id_token",
+        "verify_supabase_access_token",
         lambda _token: {
-            "uid": "firebase-audit-user",
+            "uid": "supabase-audit-user",
             "email": "audit@example.edu",
             "email_verified": True,
             "name": "Audit Student",
         },
     )
-    response = auth_client.post("/api/auth/firebase-session", json={"id_token": "sensitive-token"})
+    response = auth_client.post("/api/auth/supabase-session", json={"access_token": "sensitive-token"})
     assert response.status_code == 200
 
     with auth_client.audit_session_factory() as db:
-        event = db.query(AuditEvent).filter_by(action="AUTH_LOGIN_FIREBASE").one()
+        event = db.query(AuditEvent).filter_by(action="AUTH_LOGIN_SUPABASE").one()
         assert event.outcome == "SUCCESS"
         assert event.actor_reference == "audit@example.edu"
         assert event.actor_id == response.json()["user_id"]

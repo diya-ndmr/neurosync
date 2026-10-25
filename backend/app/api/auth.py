@@ -17,15 +17,15 @@ from app.schemas.user_schema import (
 )
 from app.services.authentication_service import hash_password, verify_password, create_access_token
 from app.services.audit_service import record_audit_event
-from app.services.firebase_auth import InvalidFirebaseToken, verify_firebase_id_token
+from app.services.supabase_auth import InvalidSupabaseToken, verify_supabase_access_token
 from app.middleware.security import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 PUBLIC_REGISTRATION_ROLES = ("student", "lecturer", "advisor")
 
 
-class FirebaseSessionRequest(BaseModel):
-    id_token: str = Field(min_length=1)
+class SupabaseSessionRequest(BaseModel):
+    access_token: str = Field(min_length=1)
 
 
 def _session_response(user: User) -> TokenResponse:
@@ -53,7 +53,7 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
     if settings.environment not in {"development", "test"}:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Use Firebase Authentication to create accounts.",
+            detail="Use Supabase Authentication to create accounts.",
         )
     if data.role not in PUBLIC_REGISTRATION_ROLES:
         raise HTTPException(
@@ -85,14 +85,19 @@ def register(data: UserRegister, db: Session = Depends(get_db)):
     }
 
 
-@router.post("/firebase-session", response_model=TokenResponse)
-def firebase_session(data: FirebaseSessionRequest, request: Request, db: Session = Depends(get_db)):
+@router.post("/supabase-session", response_model=TokenResponse)
+def supabase_session(data: SupabaseSessionRequest, request: Request, db: Session = Depends(get_db)):
     try:
-        claims = verify_firebase_id_token(data.id_token)
-    except InvalidFirebaseToken as error:
+        claims = verify_supabase_access_token(data.access_token)
+    except InvalidSupabaseToken as error:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate Firebase credentials.",
+            detail="Could not validate Supabase credentials.",
+        ) from error
+    except RuntimeError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Supabase Auth is temporarily unavailable.",
         ) from error
 
     email = claims.get("email")
@@ -106,7 +111,7 @@ def firebase_session(data: FirebaseSessionRequest, request: Request, db: Session
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="A verified Firebase email account is required.",
+            detail="A verified Supabase email account is required.",
         )
 
     normalized_email = email.strip().lower()
@@ -124,7 +129,7 @@ def firebase_session(data: FirebaseSessionRequest, request: Request, db: Session
 
     record_audit_event(
         db,
-        action="AUTH_LOGIN_FIREBASE",
+        action="AUTH_LOGIN_SUPABASE",
         outcome="SUCCESS",
         actor_reference=user.email.lower(),
         actor_id=user.id,
@@ -140,7 +145,7 @@ def login(data: UserLogin, request: Request, db: Session = Depends(get_db)):
     if settings.environment not in {"development", "test"}:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Use Firebase Authentication to sign in.",
+            detail="Use Supabase Authentication to sign in.",
         )
     request_id = getattr(request.state, "request_id", None) or str(uuid.uuid4())
     user = db.query(User).filter(func.lower(User.email) == str(data.email).strip().lower()).first()
