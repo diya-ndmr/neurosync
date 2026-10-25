@@ -1,0 +1,10 @@
+project_id = "neurosync"
+
+[api]
+enabled = true
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[functions.invite-user]
+verify_jwt = true

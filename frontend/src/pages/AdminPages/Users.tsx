@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
+import { requireSupabase } from '../../services/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
 
@@ -45,6 +46,22 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        if (!import.meta.env.DEV) {
+          const { data, error } = await requireSupabase()
+            .from('profiles')
+            .select('id, full_name, email, role')
+            .order('created_at', { ascending: false });
+          if (error) throw new Error(error.message);
+          setUsers((data ?? []).map((profile) => ({
+            id: profile.id,
+            name: profile.full_name,
+            email: profile.email,
+            role: profile.role,
+            enrolmentStatus: 'Invited'
+          })));
+          return;
+        }
+
         // Fetch all students from LMS (paginated)
         const allStudents: StudentRecord[] = [];
         let offset = 0;
@@ -95,6 +112,26 @@ export default function UsersPage() {
     setProvisionSuccess('');
     setProvisioning(true);
     try {
+      if (!import.meta.env.DEV) {
+        const { data, error } = await requireSupabase().functions.invoke('invite-user', {
+          body: { full_name: staffName, email: staffEmail, role: staffRole }
+        });
+        if (error) throw new Error(error.message);
+        const message = `Invitation sent to ${staffEmail.trim().toLowerCase()}.`;
+        setProvisionSuccess(message);
+        setStaffName('');
+        setStaffEmail('');
+        showToast(message, 'success');
+        setUsers((current) => [{
+          id: data.user_id,
+          name: staffName.trim(),
+          email: staffEmail.trim().toLowerCase(),
+          role: staffRole,
+          enrolmentStatus: 'Invited'
+        }, ...current]);
+        return;
+      }
+
       const result = await api.post<{ message: string }>(
         '/admin/users/provision',
         { name: staffName, email: staffEmail, role: staffRole },

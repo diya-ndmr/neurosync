@@ -90,63 +90,23 @@ To test a local Moodle connection, configure Moodle Web Services and REST, then 
 
 Never commit `.env` files, database passwords, Supabase service-role keys, Moodle tokens, or local database files. A safe environment template is provided at [backend/.env.example](backend/.env.example).
 
-## Deploying the backend to Render, database and auth to Supabase, and frontend to Netlify
+## Supabase-only deployment status
 
-### 1. Create Supabase project
+The intended hosting architecture is Supabase Auth, PostgreSQL, and Edge Functions,
+with Netlify hosting the frontend. The initial Supabase profile schema, role-based
+profile read policy, and administrator account-invitation function are in
+[`supabase/`](supabase/README.md). Follow that guide to apply the schema, establish
+the first administrator, and deploy invitations.
 
-Create a Supabase project and save its project URL, public anon/publishable API key, and database password. In **Authentication → Providers**, enable Email and Password and leave email confirmation enabled. The backend checks the confirmed address with Supabase before creating a NeuroSync session.
+**The conversion is not yet complete.** Most screens still call the former FastAPI
+API, including student data, analytics, attendance, wellbeing, workflow, import,
+and prediction features. Those endpoints and their database schema must be
+rewritten as Supabase Edge Functions/SQL before the application can operate
+without an API server. Do not expect a login alone to make those screens work.
+No Render database migration is included; the new Supabase project starts fresh.
 
-For database access, use the connection string shown by the Supabase dashboard's **Connect** button. Render is a persistent backend; use the direct connection if the Render region/network supports its IP version, or the Supabase **Session pooler** connection otherwise. Do not use the transaction pooler for this SQLAlchemy application. Replace the password placeholder and URL-encode special characters in the password. The application and mock LMS tables use the same Supabase database but are kept in separate schemas (`public` and `mock_lms`); the backend creates the `mock_lms` schema at startup.
-
-**Email delivery limitation:** Supabase's default Auth SMTP is for testing only. It only sends to project team members and is currently limited to about two messages per hour. To allow sign-up and password recovery for real users, configure a custom SMTP provider in **Authentication → SMTP Settings**. A provider may require a verified sender domain. Without custom SMTP, test only with an authorized team email. See [Supabase custom SMTP guidance](https://supabase.com/docs/guides/auth/auth-smtp).
-
-### 2. Deploy the FastAPI backend to Render
-
-The root [render.yaml](render.yaml) defines the backend only. In Render, use **New + → Blueprint**, connect this GitHub repository, select `main`, review the `neurosync-backend` service, and apply it. The Blueprint prompts for values marked `sync: false`; alternatively add them later under **neurosync-backend → Environment**:
-
-| Variable | Value |
-| --- | --- |
-| `DATABASE_URL` | Supabase PostgreSQL connection string from **Connect** |
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Supabase public anon/publishable key (never the service-role/secret key) |
-| `FRONTEND_URL` | Netlify production origin, e.g. `https://your-site.netlify.app` |
-| `CORS_ORIGINS` | JSON array of allowed frontend origins, e.g. `["https://your-site.netlify.app"]` |
-
-The Blueprint also sets `ENVIRONMENT=production`, creates a strong `SECRET_KEY`, disables demo tokens and mock SSO, and pins Python to 3.11.9. Keep those settings. The backend URL shown in Render is needed for Netlify's `VITE_API_URL`.
-
-### 3. Deploy the frontend from GitHub to Netlify
-
-In Netlify, choose **Add new site → Import an existing project**, connect GitHub, select this repository, and deploy the `main` branch. The committed [netlify.toml](netlify.toml) configures the frontend build and single-page-app routes. Add these under **Site configuration → Environment variables** (or **Site settings → Environment variables**) for the Production context:
-
-| Variable | Value |
-| --- | --- |
-| `VITE_API_URL` | Render backend base URL, without `/api` |
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase public anon/publishable key |
-
-Trigger a new Netlify deploy after adding variables because Vite embeds them during build. The public anon key is intended for frontend use; never use or expose the Supabase service-role key.
-
-### 4. Configure Auth redirect URLs and test
-
-In Supabase **Authentication → URL Configuration**, set **Site URL** to the Netlify production URL and add that exact URL plus `/login` and `/reset-password` as allowed redirect destinations (e.g. `https://your-site.netlify.app/**`). If you use a custom Netlify domain, use it consistently in these settings, Render's `FRONTEND_URL`/`CORS_ORIGINS`, and the browser.
-
-### 5. Migrate existing Render database data before cutover
-
-If the existing Render databases contain data, keep both databases running until the Supabase copy has been checked. Get each database's **external** PostgreSQL connection URL from its Render database page. Run the migration once, from a local PowerShell terminal, before any users sign up. It is okay if the backend has already created empty tables in Supabase:
-
-```powershell
-cd backend
-.\.venv\Scripts\Activate.ps1
-$env:SOURCE_APP_DATABASE_URL = [System.Net.NetworkCredential]::new("", (Read-Host "Render app database URL" -AsSecureString)).Password
-$env:SOURCE_LMS_DATABASE_URL = [System.Net.NetworkCredential]::new("", (Read-Host "Render LMS database URL" -AsSecureString)).Password
-$env:SUPABASE_DATABASE_URL = [System.Net.NetworkCredential]::new("", (Read-Host "Supabase PostgreSQL URL" -AsSecureString)).Password
-python migrate_render_to_supabase.py
-Remove-Item Env:SOURCE_APP_DATABASE_URL, Env:SOURCE_LMS_DATABASE_URL, Env:SUPABASE_DATABASE_URL
-```
-
-Use the database connection URLs, not the Supabase project URL or API key. The script copies application tables into Supabase `public` and LMS tables into `mock_lms`, retaining foreign-key relationships. It reports table counts only, and it stops on conflicting rows rather than overwriting them. If the migration fails, keep the Render databases; inspect the error and do not delete either source. Verify the app and LMS data in the deployed site before manually deleting old Render databases. Previous email-provider credentials/passwords are not migrated; users create a new Supabase Auth account with the same verified email to retain their NeuroSync app role/data association.
-
-After both deploys finish, check `https://YOUR-RENDER-BACKEND/api/ready`. Register an account using an email address that can receive mail, click the confirmation link, then sign in and test password recovery. Public sign-up creates student accounts. For staff, an administrator reserves the email and role in NeuroSync first; the staff member signs up with that exact verified address.
+The public Supabase anon key may be used by the frontend. Never expose the
+service-role key in Netlify variables or browser code.
 
 ## Tests and production build
 
