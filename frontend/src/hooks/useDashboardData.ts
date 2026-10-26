@@ -7,6 +7,7 @@ import {
   fetchStudentDashboard
 } from '../services/liveData';
 import { adminAnalytics, lecturerDashboard, studentDashboard } from '../services/mockData';
+import { createStudentDemoDashboard } from '../services/studentDemoData';
 import type { AdminAnalytics, LecturerDashboardData, Role, StudentDashboardData } from '../types';
 
 type DataMap = {
@@ -33,24 +34,23 @@ export interface DashboardData<T> {
   loading: boolean;
   /** Set when the live request was rejected; `data` then falls back to demo values. */
   error: string | null;
-  source: 'live' | 'offline-demo' | null;
+  source: 'live' | 'offline-demo' | 'demo-sample' | null;
   refresh: () => void;
 }
 
 /**
  * Loads the signed-in user's dashboard from the API.
  *
- * The offline demo dataset is only used when the backend cannot be reached at all
- * (the same rule the login screen follows) — a rejected request surfaces an error
- * instead of quietly showing invented numbers. `refresh` re-runs the request so a
- * page can pick up a new referral, intervention or intervention comparison.
+ * Demo data is used for student dashboards only when the backend is unreachable or
+ * returns no student dashboard records. HTTP authorization and validation errors
+ * are surfaced instead. `refresh` re-runs the request so a page can pick up changes.
  */
 export function useDashboardData<T>(role: Role, refreshKey: unknown = null): DashboardData<T> {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [source, setSource] = useState<'live' | 'offline-demo' | null>(null);
+  const [source, setSource] = useState<'live' | 'offline-demo' | 'demo-sample' | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
   const refresh = useCallback(() => setReloadToken((value) => value + 1), []);
@@ -72,6 +72,20 @@ export function useDashboardData<T>(role: Role, refreshKey: unknown = null): Das
         try {
           const live = (await loaders[role](token)) as T;
           if (cancelled) return;
+          if (role === 'student') {
+            const studentData = live as StudentDashboardData;
+            const hasRecordedStudentData = studentData.performance.module_breakdown.length > 0
+              || studentData.performance.history.length > 0
+              || studentData.attendance.history.length > 0
+              || studentData.recommendations.length > 0
+              || studentData.risk.factors.length > 0
+              || Boolean(studentData.wellbeing.last_checkin);
+            if (!hasRecordedStudentData) {
+              setData(createStudentDemoDashboard(user) as T);
+              setSource('demo-sample');
+              return;
+            }
+          }
           setData(live);
           setSource('live');
           return;
@@ -87,7 +101,7 @@ export function useDashboardData<T>(role: Role, refreshKey: unknown = null): Das
         }
       }
       if (cancelled) return;
-      setData(offlineData[role] as unknown as T);
+      setData((role === 'student' ? createStudentDemoDashboard(user) : offlineData[role]) as T);
       setSource('offline-demo');
     };
 
@@ -98,9 +112,7 @@ export function useDashboardData<T>(role: Role, refreshKey: unknown = null): Das
     return () => {
       cancelled = true;
     };
-  }, [role, token, reloadToken, refreshKey]);
+  }, [role, token, user, reloadToken, refreshKey]);
 
   return { data, loading, error, source, refresh };
 }
-
-

@@ -9,8 +9,15 @@ import type { StudentDashboardData } from '../../types';
 import type { LearningSupportItem, WellnessReferral, WellnessSlot } from '../../services/liveData';
 import { fetchLearningSupport } from '../../services/liveData';
 import { useAuth } from '../../context/AuthContext';
-import { api } from '../../services/api';
+import { api, isApiUnavailableError } from '../../services/api';
 import { useToast } from '../../components/Toast';
+import { studentDashboard } from '../../services/mockData';
+import {
+  studentDemoAppointments,
+  studentDemoLearningSupport,
+  studentDemoWellnessReferrals,
+  studentDemoWellnessSlots
+} from '../../services/studentDemoData';
 
 export default function Recommendations() {
   const { token } = useAuth();
@@ -26,6 +33,8 @@ export default function Recommendations() {
   const [appointments, setAppointments] = useState<{ id: string; status: string; starts_at: string; location: string }[]>([]);
   const [supportError, setSupportError] = useState<string | null>(null);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [supportDemoMode, setSupportDemoMode] = useState(false);
+  const [supportBackendUnavailable, setSupportBackendUnavailable] = useState(false);
 
   const refreshSupport = async () => {
     if (!token) return;
@@ -35,24 +44,39 @@ export default function Recommendations() {
         api.get<WellnessReferral[]>('/wellbeing/referrals/mine', token),
         api.get<{ id: string; status: string; starts_at: string; location: string }[]>('/wellbeing/appointments', token)
       ]);
-      setLearningSupport(learning);
-      setWellnessReferrals(referrals);
-      setAppointments(booked);
+      let slots: WellnessSlot[] = [];
       if (referrals.some((referral) => referral.status === 'active')) {
-        setWellnessSlots(await api.get<WellnessSlot[]>('/wellbeing/slots', token));
-      } else {
-        setWellnessSlots([]);
+        slots = await api.get<WellnessSlot[]>('/wellbeing/slots', token);
       }
+      const hasMissingExamples = learning.length === 0 || referrals.length === 0 || booked.length === 0
+        || (referrals.some((referral) => referral.status === 'active') && slots.length === 0);
+      setLearningSupport(learning.length ? learning : studentDemoLearningSupport);
+      setWellnessReferrals(referrals.length ? referrals : studentDemoWellnessReferrals);
+      setAppointments(booked.length ? booked : studentDemoAppointments);
+      setWellnessSlots(slots.length ? slots : studentDemoWellnessSlots);
+      setSupportDemoMode(hasMissingExamples);
+      setSupportBackendUnavailable(false);
       setSupportError(null);
     } catch (requestError) {
-      setSupportError(requestError instanceof Error ? requestError.message : 'Support recommendations could not be loaded.');
+      setLearningSupport(studentDemoLearningSupport);
+      setWellnessReferrals(studentDemoWellnessReferrals);
+      setWellnessSlots(studentDemoWellnessSlots);
+      setAppointments(studentDemoAppointments);
+      setSupportDemoMode(true);
+      if (isApiUnavailableError(requestError)) {
+        setSupportBackendUnavailable(true);
+        setSupportError(null);
+      } else {
+        setSupportBackendUnavailable(false);
+        setSupportError(requestError instanceof Error ? requestError.message : 'Support recommendations could not be loaded.');
+      }
     }
   };
 
   useEffect(() => { void refreshSupport(); }, [token]);
 
   const updateResource = async (resourceId: string, status: 'viewed' | 'completed') => {
-    if (!token) return;
+    if (!token || supportDemoMode) return;
     try {
       await api.patch(`/learning/resources/${resourceId}/progress`, { status }, token);
       await refreshSupport();
@@ -62,7 +86,7 @@ export default function Recommendations() {
   };
 
   const openResource = async (resource: LearningSupportItem['resources'][number]) => {
-    if (!token) return;
+    if (!token || supportDemoMode) return;
     try {
       if (resource.resource_type === 'file') {
         const file = await api.getBlob(resource.url, token);
@@ -81,7 +105,7 @@ export default function Recommendations() {
   };
 
   const bookWellness = async (referral: WellnessReferral, slot: WellnessSlot) => {
-    if (!token) return;
+    if (!token || supportDemoMode) return;
     setBookingId(slot.id);
     try {
       await api.post('/wellbeing/appointments', { referral_id: referral.id, slot_id: slot.id }, token);
@@ -95,7 +119,7 @@ export default function Recommendations() {
   };
 
   const completeRecommendation = async (recommendationId: string) => {
-    if (!token) return;
+    if (!token || source === 'offline-demo') return;
     setCompletingId(recommendationId);
     try {
       await api.patch(`/predictions/recommendations/${recommendationId}/complete`, {}, token);
@@ -110,9 +134,14 @@ export default function Recommendations() {
 
   if (loading) return <LoadingState label="Loading your recommendations…" />;
   if (!data) return null;
+  const recommendations = data.recommendations.length ? data.recommendations : studentDashboard.recommendations;
+  const recommendationsAreDemo = data.recommendations.length === 0;
+  const noticeSource = source === 'offline-demo' || supportBackendUnavailable
+    ? 'offline-demo'
+    : source === 'demo-sample' || supportDemoMode || recommendationsAreDemo ? 'demo-sample' : source;
   return (
     <div className="space-y-6">
-      <DataSourceNotice source={source} />
+      <DataSourceNotice source={noticeSource} />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -131,7 +160,7 @@ export default function Recommendations() {
         </div>
       </motion.div>
 
-      <RecommendationCard recommendations={data.recommendations} onComplete={completeRecommendation} completingId={completingId} />
+      <RecommendationCard recommendations={recommendations} onComplete={completeRecommendation} completingId={completingId} readOnly={source !== 'live' || recommendationsAreDemo} />
 
       <section className="neo-card p-6" aria-labelledby="learning-support-heading">
         <h2 id="learning-support-heading" className="font-bold text-ink">Topic-level learning support</h2>
@@ -148,7 +177,7 @@ export default function Recommendations() {
               <ul className="mt-3 space-y-2">
                 {item.resources.map((resource) => <li key={resource.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-ns-surface-secondary p-3">
                   <div><p className="text-sm font-medium">{resource.title}</p>{resource.description && <p className="text-xs text-ink-soft">{resource.description}</p>}<p className="text-xs text-ink-faint">Source: {resource.provider}{resource.reviewed_by_lecturer ? ' · Lecturer reviewed' : ' · Awaiting lecturer review'} · Progress: {resource.status}</p></div>
-                  <div className="flex gap-2"><button type="button" onClick={() => void openResource(resource)} className="neo-btn px-3 py-2 text-xs">{resource.resource_type === 'file' ? 'Download' : 'Open resource'}</button>{resource.status !== 'completed' && <button type="button" onClick={() => void updateResource(resource.id, 'completed')} className="rounded border border-ns-border px-3 py-2 text-xs">Mark complete</button>}</div>
+                  <div className="flex gap-2"><button type="button" disabled={supportDemoMode} onClick={() => void openResource(resource)} className="neo-btn px-3 py-2 text-xs">{resource.resource_type === 'file' ? 'Download' : 'Open resource'}</button>{resource.status !== 'completed' && <button type="button" disabled={supportDemoMode} onClick={() => void updateResource(resource.id, 'completed')} className="rounded border border-ns-border px-3 py-2 text-xs">Mark complete</button>}</div>
                 </li>)}
               </ul>
             </article>)}
@@ -164,7 +193,7 @@ export default function Recommendations() {
           <h3 className="mt-4 text-sm font-semibold">Available appointment slots</h3>
           {wellnessSlots.length === 0 ? <p className="mt-2 text-sm text-ink-faint">No appointment slots are currently available.</p> : wellnessSlots.map((slot) => <div key={slot.id} className="mt-2 flex flex-wrap items-center justify-between gap-3 border border-ns-border p-3">
             <p className="text-sm">{new Date(slot.starts_at).toLocaleString()} · {slot.duration_minutes} min · {slot.location}</p>
-            <button type="button" disabled={bookingId === slot.id} onClick={() => void bookWellness(wellnessReferrals.find((referral) => referral.status === 'active')!, slot)} className="neo-btn px-3 py-2 text-xs">{bookingId === slot.id ? 'Booking…' : 'Book a Wellness session'}</button>
+            <button type="button" disabled={supportDemoMode || bookingId === slot.id} onClick={() => void bookWellness(wellnessReferrals.find((referral) => referral.status === 'active')!, slot)} className="neo-btn px-3 py-2 text-xs">{bookingId === slot.id ? 'Booking…' : 'Book a Wellness session'}</button>
           </div>)}
         </> : <p className="mt-2 text-sm text-ink-soft">Wellness booking becomes available when an authorised support professional makes a recommendation; elapsed time alone does not unlock it.</p>}
         {appointments.length > 0 && <div className="mt-4 border-t border-ns-divider pt-4"><h3 className="text-sm font-semibold">Your bookings</h3>{appointments.map((appointment) => <p key={appointment.id} className="mt-2 text-sm">{new Date(appointment.starts_at).toLocaleString()} · {appointment.location} · <span className="capitalize">{appointment.status}</span></p>)}</div>}
@@ -175,10 +204,11 @@ export default function Recommendations() {
           <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-brand-100 bg-brand-50 text-brand-800"><LifeBuoy size={20} /></div>
           <div><h2 id="support-request-heading" className="font-bold text-ink">Ask for support</h2><p className="mt-1 text-sm text-ink-soft">Send a private request to the student support team.</p></div>
         </div>
-        <form className="mt-4 space-y-4" onSubmit={async (event) => { event.preventDefault(); if (!token || !message.trim()) return; setSending(true); try { await api.post('/support-requests', { request_type: requestType, message }, token); setMessage(''); showToast('Your support request was sent.'); } catch (error) { showToast(error instanceof Error ? error.message : 'Could not send support request.', 'error'); } finally { setSending(false); } }}>
+        {supportBackendUnavailable && <p className="mt-3 text-xs text-amber-900">The backend is unavailable, so support requests cannot be sent right now.</p>}
+        <form className="mt-4 space-y-4" onSubmit={async (event) => { event.preventDefault(); if (!token || !message.trim() || supportBackendUnavailable) return; setSending(true); try { await api.post('/support-requests', { request_type: requestType, message }, token); setMessage(''); showToast('Your support request was sent.'); } catch (error) { showToast(error instanceof Error ? error.message : 'Could not send support request.', 'error'); } finally { setSending(false); } }}>
           <label className="block text-sm font-medium">What do you need help with?<select className="neo-input mt-1" value={requestType} onChange={(event) => setRequestType(event.target.value)}><option>Academic support</option><option>Attendance support</option><option>Wellbeing support</option><option>Financial or personal support</option><option>Other</option></select></label>
           <label className="block text-sm font-medium">Message<textarea className="neo-input mt-1" rows={4} minLength={5} maxLength={2000} required value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Tell us what would help." /></label>
-          <button type="submit" disabled={sending || !message.trim()} className="neo-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm"><Send size={15} />{sending ? 'Sending…' : 'Send support request'}</button>
+          <button type="submit" disabled={sending || !message.trim() || supportBackendUnavailable} className="neo-btn inline-flex items-center gap-2 px-4 py-2.5 text-sm"><Send size={15} />{sending ? 'Sending…' : 'Send support request'}</button>
         </form>
       </section>
 

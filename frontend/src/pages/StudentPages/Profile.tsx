@@ -1,13 +1,17 @@
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import LoadingState from '../../components/LoadingState';
+import DataSourceNotice from '../../components/DataSourceNotice';
 import { useAuth } from '../../context/AuthContext';
 import { useApiData } from '../../hooks/useApiData';
 import { fetchMyStudentProfile } from '../../services/liveData';
 import { initials, formatDate } from '../../utils/helpers';
+import { createStudentDemoProfile } from '../../services/studentDemoData';
 
 export default function Profile() {
   const { user } = useAuth();
-  const { data: student, loading, error } = useApiData(fetchMyStudentProfile);
+  const fallback = useMemo(() => ({ data: createStudentDemoProfile(user) }), [user]);
+  const { data: student, loading, error, source } = useApiData(fetchMyStudentProfile, [], true, fallback);
 
   if (loading) return <LoadingState label="Loading your profile…" />;
   if (error) return <div role="alert" className="neo-card p-6 text-sm text-ns-danger">Your profile could not be loaded: {error}</div>;
@@ -17,6 +21,7 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
+      <DataSourceNotice source={source} />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

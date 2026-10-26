@@ -1,29 +1,39 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { HeartPulse, SmilePlus } from 'lucide-react';
 import WellbeingCard from '../../components/Cards/WellbeingCard';
 import NeoButton from '../../components/Buttons/NeoButton';
 import LoadingState from '../../components/LoadingState';
+import DataSourceNotice from '../../components/DataSourceNotice';
 import { useApiData } from '../../hooks/useApiData';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import { fetchMyStudentProfile, fetchWellbeingHistory } from '../../services/liveData';
 import { formatDate } from '../../utils/helpers';
 import { useToast } from '../../components/Toast';
+import { studentDemoWellbeing, createStudentDemoProfile } from '../../services/studentDemoData';
+
+const wellbeingFallback = { data: studentDemoWellbeing, useWhenEmpty: (rows: typeof studentDemoWellbeing) => rows.length === 0 };
 
 export default function Wellbeing() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { showToast } = useToast();
-  const { data: profile } = useApiData(fetchMyStudentProfile);
-  const { data: history, loading, error, refresh } = useApiData(fetchWellbeingHistory);
+  const profileFallback = useMemo(() => ({ data: createStudentDemoProfile(user) }), [user]);
+  const { data: profile, source: profileSource } = useApiData(fetchMyStudentProfile, [], true, profileFallback);
+  const { data: history, loading, error, refresh, source: historySource } = useApiData(fetchWellbeingHistory, [], true, wellbeingFallback);
   const [modal, setModal] = useState(false);
   const [mood, setMood] = useState(7);
   const [stress, setStress] = useState(5);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const demoMode = profileSource === 'offline-demo' || historySource === 'offline-demo' || historySource === 'demo-sample';
+  const dataSource = profileSource === 'offline-demo' || historySource === 'offline-demo'
+    ? 'offline-demo'
+    : demoMode ? 'demo-sample' : 'live';
 
   const submit = async () => {
+    if (demoMode) return;
     if (!token || !profile) {
       setSaveError('Your student profile could not be resolved.');
       return;
@@ -57,6 +67,7 @@ export default function Wellbeing() {
 
   return (
     <div className="space-y-6">
+      <DataSourceNotice source={dataSource} />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -72,7 +83,7 @@ export default function Wellbeing() {
               <p className="text-sm text-ink-soft">Track your mood and stress</p>
             </div>
           </div>
-          <NeoButton onClick={() => setModal(true)}>
+          <NeoButton disabled={demoMode} onClick={() => setModal(true)}>
             <SmilePlus size={17} className="inline mr-1.5" />
             New Check-in
           </NeoButton>
@@ -80,13 +91,14 @@ export default function Wellbeing() {
       </motion.div>
 
       {error && <p className="text-sm text-ns-warning">{error}</p>}
+      {demoMode && <p role="status" className="text-xs text-ink-faint">Check-ins are read-only in demo mode.</p>}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <WellbeingCard
           moodScore={latest?.mood_score ?? null}
           stressLevel={latest?.stress_level ?? null}
           lastCheckin={latest?.created_at ?? ''}
-          onCheckin={() => setModal(true)}
+          onCheckin={() => { if (!demoMode) setModal(true); }}
         />
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -199,4 +211,3 @@ export default function Wellbeing() {
     </div>
   );
 }
-

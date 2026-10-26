@@ -1,17 +1,25 @@
 import { motion } from 'framer-motion';
 import LineChartCard from '../../components/Charts/LineChartCard';
 import LoadingState from '../../components/LoadingState';
+import DataSourceNotice from '../../components/DataSourceNotice';
 import { useApiData } from '../../hooks/useApiData';
 import { fetchStudentAttendanceSummary } from '../../services/liveData';
+import { studentDemoAttendance } from '../../services/studentDemoData';
+
+const attendanceFallback = {
+  data: studentDemoAttendance,
+  useWhenEmpty: (summary: typeof studentDemoAttendance) => summary.records.length === 0
+};
 
 export default function Attendance() {
-  const { data, loading, error } = useApiData(fetchStudentAttendanceSummary);
+  const { data, loading, error, source } = useApiData(fetchStudentAttendanceSummary, [], true, attendanceFallback);
 
   if (loading) return <LoadingState label="Loading your attendance record…" />;
   if (!data) return <div className="neo-card p-6 text-sm text-ns-danger" role="alert">{error || 'Attendance could not be loaded.'}</div>;
 
   return (
     <div className="space-y-6">
+      <DataSourceNotice source={source} />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

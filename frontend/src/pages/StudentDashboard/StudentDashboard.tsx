@@ -9,12 +9,19 @@ import DataSourceNotice from '../../components/DataSourceNotice';
 import { useDashboardData } from '../../hooks/useDashboardData';
 import type { StudentDashboardData } from '../../types';
 import { api } from '../../services/api';
+import { studentDashboard } from '../../services/mockData';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApiData } from '../../hooks/useApiData';
 import { fetchStudentAttendanceSummary } from '../../services/liveData';
+import { studentDemoAttendance } from '../../services/studentDemoData';
+
+const attendanceFallback = {
+  data: studentDemoAttendance,
+  useWhenEmpty: (summary: typeof studentDemoAttendance) => summary.records.length === 0
+};
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
@@ -25,11 +32,12 @@ export default function StudentDashboard() {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const { data, loading, error, source, refresh } = useDashboardData<StudentDashboardData>('student');
-  const { data: attendanceSummary, loading: attendanceLoading, error: attendanceError } = useApiData(fetchStudentAttendanceSummary);
+  const { data: attendanceSummary, loading: attendanceLoading, error: attendanceError, source: attendanceSource } =
+    useApiData(fetchStudentAttendanceSummary, [], true, attendanceFallback);
   const [completingRecommendation, setCompletingRecommendation] = useState<string | null>(null);
 
   const completeRecommendation = async (recommendationId: string) => {
-    if (!token) return;
+    if (!token || source !== 'live') return;
     setCompletingRecommendation(recommendationId);
     try {
       await api.patch(`/predictions/recommendations/${recommendationId}/complete`, {}, token);
@@ -50,10 +58,16 @@ export default function StudentDashboard() {
   const monthlyAttendance = attendanceSummary?.monthly_breakdown ?? [];
   const latestAttendanceMonth = monthlyAttendance[monthlyAttendance.length - 1];
   const firstAttendanceMonth = monthlyAttendance[0];
+  const displayRecommendations = recommendations.length ? recommendations : studentDashboard.recommendations;
+  const dataSource = source === 'offline-demo' || attendanceSource === 'offline-demo'
+    ? 'offline-demo'
+    : source === 'demo-sample' || attendanceSource === 'demo-sample' || recommendations.length === 0
+      ? 'demo-sample'
+      : source;
 
   return (
     <div className="student-dashboard space-y-6">
-      <DataSourceNotice source={source} />
+      <DataSourceNotice source={dataSource} />
       {supportOpen && <div className="fixed inset-0 z-50 flex items-center justify-center p-4"><button aria-label="Close support request" className="absolute inset-0 bg-ns-black/40" onClick={() => setSupportOpen(false)} /><form className="relative w-full max-w-lg rounded-lg border border-ns-border bg-white p-5 shadow-xl" onSubmit={async (event) => { event.preventDefault(); if (!token || !message.trim()) return; setSending(true); try { await api.post('/support-requests', { request_type: requestType, message }, token); setMessage(''); setSupportOpen(false); showToast('Your support request was sent.'); } catch (error) { showToast(error instanceof Error ? error.message : 'Could not send support request.', 'error'); } finally { setSending(false); } }}><h2 className="text-lg font-semibold">Request support</h2><p className="mt-1 text-sm text-ns-text-secondary">Tell the support team what would help.</p><label className="mt-4 block text-sm font-medium">Area<select className="neo-input mt-1" value={requestType} onChange={(event) => setRequestType(event.target.value)}><option>Academic support</option><option>Attendance support</option><option>Wellbeing support</option><option>Financial or personal support</option><option>Other</option></select></label><label className="mt-4 block text-sm font-medium">Message<textarea className="neo-input mt-1" rows={5} minLength={5} maxLength={2000} required value={message} onChange={(event) => setMessage(event.target.value)} placeholder="What would you like help with?" /></label><div className="mt-4 flex justify-end gap-2"><button type="button" className="neo-btn px-4 py-2 text-sm" onClick={() => setSupportOpen(false)}>Cancel</button><button type="submit" disabled={sending || !message.trim()} className="neo-btn inline-flex items-center gap-2 px-4 py-2 text-sm">{sending ? 'Sending…' : 'Send request'}</button></div></form></div>}
       <WelcomeCard
         student={student}
@@ -88,7 +102,7 @@ export default function StudentDashboard() {
             lastCheckin={wellbeing.last_checkin}
             onCheckin={() => navigate('/student/wellbeing')}
           />
-          <RecommendationCard recommendations={recommendations} onComplete={completeRecommendation} completingId={completingRecommendation} />
+          <RecommendationCard recommendations={displayRecommendations} onComplete={completeRecommendation} completingId={completingRecommendation} readOnly={source !== 'live' || recommendations.length === 0} />
         </div>
       </section>
 

@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { isApiUnavailableError } from '../services/api';
 
 export interface ApiData<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
+  source: 'live' | 'offline-demo' | 'demo-sample' | null;
   refresh: () => void;
+}
+
+export interface ApiFallback<T> {
+  data: T;
+  useWhenEmpty?: (result: T) => boolean;
 }
 
 /**
@@ -17,12 +24,14 @@ export interface ApiData<T> {
 export function useApiData<T>(
   fetcher: (token: string) => Promise<T>,
   deps: unknown[] = [],
-  enabled = true
+  enabled = true,
+  fallback?: ApiFallback<T>
 ): ApiData<T> {
   const { token } = useAuth();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<ApiData<T>['source']>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
   const refresh = useCallback(() => setReloadToken((value) => value + 1), []);
@@ -35,6 +44,7 @@ export function useApiData<T>(
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setSource(null);
 
     const run = async () => {
       if (!token) {
@@ -46,9 +56,22 @@ export function useApiData<T>(
       }
       try {
         const result = await fetcher(token);
-        if (!cancelled) setData(result);
+        if (cancelled) return;
+        if (fallback?.useWhenEmpty?.(result)) {
+          setData(fallback.data);
+          setSource('demo-sample');
+        } else {
+          setData(result);
+          setSource('live');
+        }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Request failed');
+        if (cancelled) return;
+        if (fallback && isApiUnavailableError(err)) {
+          setData(fallback.data);
+          setSource('offline-demo');
+        } else {
+          setError(err instanceof Error ? err.message : 'Request failed');
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -59,7 +82,7 @@ export function useApiData<T>(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, enabled, reloadToken, ...deps]);
+  }, [token, enabled, reloadToken, fallback, ...deps]);
 
-  return { data, loading, error, refresh };
+  return { data, loading, error, source, refresh };
 }

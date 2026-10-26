@@ -6,6 +6,7 @@ interface Props {
   recommendations: Recommendation[];
   onComplete: (id: string) => void;
   completingId?: string | null;
+  readOnly?: boolean;
 }
 
 const categoryMeta = {
@@ -16,7 +17,7 @@ const categoryMeta = {
   administrative: { label: 'Administrative' }
 };
 
-export default function RecommendationCard({ recommendations, onComplete, completingId }: Props) {
+export default function RecommendationCard({ recommendations, onComplete, completingId, readOnly = false }: Props) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -75,7 +76,7 @@ export default function RecommendationCard({ recommendations, onComplete, comple
                 ) : (
                   <button
                     type="button"
-                    disabled={completingId === rec.id}
+                    disabled={readOnly || completingId === rec.id}
                     aria-label={`Mark ${meta.label.toLowerCase()} suggestion complete`}
                     onClick={() => onComplete(rec.id)}
                     className="min-h-11 px-2 text-xs font-medium text-brand-800 hover:underline"
