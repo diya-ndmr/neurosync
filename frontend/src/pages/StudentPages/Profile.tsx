@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import LoadingState from '../../components/LoadingState';
 import DataSourceNotice from '../../components/DataSourceNotice';
 import { useAuth } from '../../context/AuthContext';
@@ -22,52 +23,44 @@ export default function Profile() {
   return (
     <div className="space-y-6">
       <DataSourceNotice source={source} />
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="neo-card p-6 md:p-7"
-      >
+      <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">Account profile</p>
         <h1 className="mt-1 text-2xl font-extrabold text-ink">Settings &amp; preferences</h1>
         <p className="mt-1 text-sm text-ink-soft">Your student profile and university record</p>
-      </motion.div>
+      </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="neo-card flex flex-col items-center p-6 text-center"
-        >
-          <div className="mb-4 flex h-24 w-24 items-center justify-center rounded-2xl bg-brand-700 text-3xl font-bold text-white shadow-sm">
+      <nav aria-label="Profile settings" className="flex gap-2 overflow-x-auto border-b border-ns-border">
+        <span aria-current="page" className="shrink-0 border-b-2 border-brand-700 px-4 py-3 text-sm font-semibold text-brand-800">
+          Account profile
+        </span>
+        <Link to="/student/settings" className="shrink-0 border-b-2 border-transparent px-4 py-3 text-sm font-medium text-ink-soft hover:border-ns-border hover:text-ink">
+          Preferences
+        </Link>
+      </nav>
+
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="neo-card p-6 md:p-8"
+        aria-labelledby="personal-information-heading"
+      >
+        <div className="flex flex-col gap-5 border-b border-ns-divider pb-6 sm:flex-row sm:items-center">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-brand-700 text-2xl font-bold text-white shadow-sm">
             {initials(fullName)}
           </div>
-          <h2 className="text-xl font-extrabold text-ink">{fullName}</h2>
-          <p className="mt-1 text-sm text-ink-faint">{student.programme}</p>
-          <p className="mt-1 text-sm font-medium text-ink-soft">Student ID: {student.student_number}</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <span className="neo-chip bg-ns-surface-secondary text-ns-text-secondary capitalize">{user?.role || 'student'}</span>
-            <span className="neo-chip bg-ns-surface-secondary text-ns-text-secondary">
-              {student.year_level > 0 ? `Year ${student.year_level}` : 'Year not provided'}
-            </span>
+          <div className="min-w-0">
+            <h2 className="text-xl font-extrabold text-ink">{fullName}</h2>
+            <p className="mt-1 text-sm text-ink-soft">{student.programme || 'Programme not recorded'}{student.year_level > 0 ? ` · Year ${student.year_level}` : ''}</p>
+            <p className="mt-1 text-sm text-ink-faint">Student ID: {student.student_number}</p>
+            <p className="mt-2 text-xs text-ink-faint">Member since {formatDate(student.created_at)}</p>
           </div>
-          <div className="mt-5 w-full rounded-lg bg-ns-surface-secondary border border-ns-border p-4">
-            <p className="text-xs font-semibold text-ink-faint">Member since</p>
-            <p className="mt-1 text-sm font-bold text-ink">{formatDate(student.created_at)}</p>
-          </div>
-        </motion.div>
+          <span className="neo-chip w-fit bg-ns-surface-secondary text-ns-text-secondary capitalize sm:ml-auto">{user?.role || 'student'}</span>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="neo-card p-6 md:p-7 lg:col-span-2"
-        >
-          <div className="mb-5">
-            <h2 className="text-lg font-bold text-ink">Personal information</h2>
-            <p className="mt-1 text-sm text-ink-soft">Details currently available from your university record</p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="pt-6">
+          <h2 id="personal-information-heading" className="text-lg font-bold text-ink">Personal information</h2>
+          <p className="mt-1 text-sm text-ink-soft">Details currently available from your university record</p>
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <ProfileField label="Full name" value={fullName} />
             <ProfileField label="University email" value={user?.email || 'Not recorded'} />
             <ProfileField label="Preferred name" value="Not recorded" />
@@ -79,8 +72,8 @@ export default function Profile() {
           <p className="mt-5 border-t border-ns-divider pt-4 text-xs text-ink-faint">
             This page displays your current university record. Profile editing is not available here.
           </p>
-        </motion.div>
-      </div>
+        </div>
+      </motion.section>
     </div>
   );
 }
