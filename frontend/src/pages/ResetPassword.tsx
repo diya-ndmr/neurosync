@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import NeoButton from '../components/Buttons/NeoButton';
+import Logo from '../components/Logo';
 import { requireSupabase, supabaseErrorMessage } from '../services/supabase';
 
 export default function ResetPassword() {
@@ -60,8 +61,9 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-ai-gradient flex items-center justify-center p-6">
-      <div className="neo-card w-full max-w-md p-8 md:p-10">
+    <div className="login-stage min-h-screen flex items-center justify-center p-6">
+      <div className="login-form-panel neo-card w-full max-w-md p-8 md:p-10">
+        <Logo size="md" className="mb-6" />
         <h1 className="text-2xl font-extrabold text-ink">Choose a new password</h1>
         {ready ? (
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">

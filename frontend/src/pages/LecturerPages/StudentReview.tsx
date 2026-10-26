@@ -3,6 +3,7 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, ArrowLeft, CalendarCheck, Eye, LoaderCircle, Mail, MessageSquarePlus, Phone, Send } from 'lucide-react';
 import NeoButton from '../../components/Buttons/NeoButton';
 import ProgressComparisonCard from '../../components/Cards/ProgressComparisonCard';
+import RiskExplanationPanel from '../../components/RiskExplanationPanel';
 import BarChartCard from '../../components/Charts/BarChartCard';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -158,6 +159,8 @@ export default function StudentReview() {
           <p className="mt-1 text-sm font-semibold text-ns-text-primary">Not recorded in the current dataset</p>
         </div>
       </section>
+
+      <RiskExplanationPanel risk={review.risk} metrics={review.metrics} />
 
       {notice && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-ns-success">{notice}</div>}
       {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-ns-danger">{error}</div>}

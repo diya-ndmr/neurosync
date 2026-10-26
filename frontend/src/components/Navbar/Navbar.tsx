@@ -25,6 +25,7 @@ export default function Navbar({ onMenuClick, mobileMenuOpen }: NavbarProps) {
   const settingsPath = user.role === 'student' ? '/student/settings' : user.role === 'admin' ? '/admin/settings' : null;
   const searchPath = user.role === 'admin' ? '/admin/users' : user.role === 'lecturer' ? '/lecturer/students' : user.role === 'advisor' ? '/advisor/cases' : null;
   const preferencesPath = `/${user.role}/preferences`;
+  const portalLabel = user.role === 'student' ? 'Student portal' : 'University staff portal';
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -62,8 +63,12 @@ export default function Navbar({ onMenuClick, mobileMenuOpen }: NavbarProps) {
             <Logo size="sm" showText={false} />
           </div>
 
+          <p className="hidden sm:block text-sm font-semibold tracking-tight text-ns-primary-dark">
+            {portalLabel}
+          </p>
+
           {/* Search */}
-          {searchPath && <form onSubmit={submitSearch} className="hidden md:flex items-center gap-2 rounded bg-white border border-ns-border px-4 py-2.5 w-64 lg:w-80 focus-within:ring-2 focus-within:ring-brand-500/30 focus-within:border-brand-500">
+          {searchPath && <form onSubmit={submitSearch} className="hidden md:flex items-center gap-2 rounded-xl bg-white border border-ns-border px-4 py-2.5 w-64 lg:w-80 focus-within:ring-2 focus-within:ring-brand-500/30 focus-within:border-brand-500">
             <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} aria-label={t('common.search')} placeholder={t('common.search')} className="bg-transparent text-sm text-ink placeholder:text-ink-faint/60 focus:outline-none w-full" />
           </form>}
         </div>
@@ -85,7 +90,7 @@ export default function Navbar({ onMenuClick, mobileMenuOpen }: NavbarProps) {
             <button
               ref={profileButtonRef}
               onClick={() => setProfileOpen((v) => !v)}
-              className="flex items-center gap-2 rounded bg-white border border-ns-border pl-1.5 pr-2.5 py-1.5 hover:bg-ns-surface-secondary transition-colors focus-visible:ring-2 focus-visible:ring-brand-500"
+              className="flex items-center gap-2 rounded-xl bg-white border border-ns-border pl-1.5 pr-2.5 py-1.5 hover:bg-ns-surface-secondary transition-colors focus-visible:ring-2 focus-visible:ring-brand-500"
               aria-expanded={profileOpen}
               aria-controls="profile-menu"
               aria-label={`${user.name} profile menu`}

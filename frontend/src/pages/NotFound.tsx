@@ -7,7 +7,7 @@ export default function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-ai-gradient flex items-center justify-center p-6">
+    <div className="login-stage min-h-screen flex items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -36,4 +36,3 @@ export default function NotFound() {
     </div>
   );
 }
-

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { AlertTriangle, CheckCircle2, Clock3, FolderOpen, LoaderCircle, Mail, Users } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import StatCard from '../../components/Cards/StatCard';
+import DashboardHero from '../../components/DashboardHero';
 import LoadingState from '../../components/LoadingState';
 import WeeklyBriefing from '../../components/WeeklyBriefing';
 import ActionQueue from '../../components/ActionQueue';
@@ -40,15 +41,11 @@ export default function AdvisorDashboard() {
   if (error) return <div role="alert" className="neo-card p-6 text-ns-danger">{error}</div>;
   if (!data) return null;
   const summary = data.summary;
-
   return (
     <div className="space-y-6">
-      <section>
-        <h1 className="text-2xl font-semibold text-ns-text-primary">Advisor dashboard</h1>
-        <p className="text-sm text-ink-soft mt-1">
-          Review referrals, coordinate human-led support, and track follow-up.
-        </p>
-      </section>
+      <DashboardHero
+        icon={<Sparkles size={42} strokeWidth={1.5} />}
+      />
 
       <section aria-labelledby="native-lms-workflow-title">
         <div className="mb-3">

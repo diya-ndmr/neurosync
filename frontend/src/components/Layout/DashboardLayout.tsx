@@ -32,8 +32,8 @@ export default function DashboardLayout({ allowedRoles }: DashboardLayoutProps) 
       />
       <div className="flex-1 flex flex-col min-w-0">
         <Navbar onMenuClick={() => setMobileOpen(true)} mobileMenuOpen={mobileOpen} />
-        <main id="main-content" tabIndex={-1} className="flex-1 px-4 md:px-6 py-5 md:py-6 pb-20 md:pb-6 focus:outline-none">
-          <div className="page-content">
+        <main id="main-content" tabIndex={-1} className="flex-1 px-4 md:px-7 xl:px-10 py-5 md:py-8 pb-20 md:pb-8 focus:outline-none">
+          <div className="page-content mx-auto w-full max-w-[1600px]">
             <Outlet />
           </div>
           <DemoEnvironmentNotice />

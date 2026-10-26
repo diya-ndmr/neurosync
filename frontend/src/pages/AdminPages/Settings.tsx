@@ -1,356 +1,216 @@
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Settings, Database, Bell, Shield, BrainCircuit } from 'lucide-react';
-import NeoButton from '../../components/Buttons/NeoButton';
-import { useToast } from '../../components/Toast';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { Activity, ArrowUpRight, CheckCircle2, CircleHelp, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
+import {
+  DEMO_AUDIT_EVENTS,
+  DEMO_DATA_NOTICE,
+  DEMO_ENCRYPTION_EXAMPLE,
+  DEMO_STAFF_SECURITY,
+} from './adminDemoData';
 
-interface MoodleStatus {
-  configured: boolean;
-  base_url: string | null;
-  connection_status: 'not_configured' | 'ready_to_test';
+interface SecurityOverview {
+  permissions: { role: string; enforcement: string }[];
+  mfa: { status: string; detail: string };
+  encryption: {
+    production_https_required: boolean;
+    frontend_https_configured: boolean;
+    supabase_https_configured: boolean | null;
+    database_transport: string;
+    encryption_at_rest: string;
+  };
+  audit_log: { available: boolean; retention: string };
+  data_retention: { status: string; detail: string };
+  privacy_notice: { status: string; detail: string };
 }
 
-interface MoodleConnectionResult {
-  connected: boolean;
-  connection_status: 'connected';
-  site_name: string;
-  release: string | null;
+interface AuditEvent {
+  event_id: string;
+  actor: string;
+  action: string;
+  outcome: string;
+  occurred_at: string;
+  is_demo?: boolean;
+}
+
+interface AuditResponse {
+  total: number;
+  items: AuditEvent[];
+}
+
+function Status({ children, positive = false }: { children: ReactNode; positive?: boolean }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${positive ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
+      {positive ? <CheckCircle2 size={13} /> : <CircleHelp size={13} />}
+      {children}
+    </span>
+  );
 }
 
 export default function SettingsPage() {
-  const { showToast } = useToast();
   const { token } = useAuth();
-  const [saved, setSaved] = useState(false);
-  const [moodleStatus, setMoodleStatus] = useState<MoodleStatus | null>(null);
-  const [moodleResult, setMoodleResult] = useState<MoodleConnectionResult | null>(null);
-  const [moodleLoading, setMoodleLoading] = useState(true);
-  const [moodleTesting, setMoodleTesting] = useState(false);
-  const [moodleError, setMoodleError] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    systemName: 'NeuroSync',
-    aiModel: 'Gradient Boost v1.0',
-    riskThreshold: '70',
-    retentionDays: '90',
-    emailNotifications: true,
-    smsNotifications: false,
-    autoPredictions: true,
-    twoFactor: false
-  });
+  const [security, setSecurity] = useState<SecurityOverview | null>(null);
+  const [audit, setAudit] = useState<AuditResponse | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    api
-      .get<MoodleStatus>('/moodle/status', token ?? undefined)
-      .then((status) => {
-        if (active) setMoodleStatus(status);
-      })
-      .catch(() => {
-        if (active) setMoodleError('Unable to load Moodle connection settings.');
-      })
-      .finally(() => {
-        if (active) setMoodleLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [securityResult, auditResult] = await Promise.all([
+        api.get<SecurityOverview>('/admin/security', token || undefined),
+        api.get<AuditResponse>('/admin/audit-events?limit=50', token || undefined)
+      ]);
+      setSecurity(securityResult);
+      setAudit(auditResult);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to load security and privacy information.');
+    } finally {
+      setLoading(false);
+    }
   }, [token]);
 
-  const testMoodleConnection = async () => {
-    setMoodleTesting(true);
-    setMoodleError(null);
-    setMoodleResult(null);
-    try {
-      const result = await api.post<MoodleConnectionResult>('/moodle/test', {}, token ?? undefined);
-      setMoodleResult(result);
-      showToast('Moodle connection verified.', 'success');
-    } catch (error) {
-      setMoodleError(error instanceof Error ? error.message : 'Moodle connection test failed.');
-    } finally {
-      setMoodleTesting(false);
-    }
-  };
+  useEffect(() => { void load(); }, [load]);
 
-  const handleSave = () => {
-    setSaved(true);
-    showToast('Settings saved for this demo session.', 'info');
-    setTimeout(() => setSaved(false), 1500);
-  };
-
-  const toggle = (key: keyof typeof form) => {
-    setForm((prev) => ({ ...prev, [key]: !prev[key] }));
-    showToast('Preference changed for this demo session.', 'info');
-  };
+  const displayAuditEvents = [
+    ...DEMO_AUDIT_EVENTS,
+    ...(audit?.items.map((event) => ({ ...event, is_demo: false })) ?? []),
+  ].sort((first, second) => new Date(second.occurred_at).getTime() - new Date(first.occurred_at).getTime());
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="neo-card p-7"
-      >
+      <header className="neo-card flex flex-wrap items-center justify-between gap-4 p-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
-            <Settings size={24} />
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-brand-100 bg-brand-50 text-brand-800">
+            <ShieldCheck size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-ink">System Configuration</h1>
-            <p className="text-sm text-ink-soft">Manage NeuroSync platform settings</p>
+            <h1 className="text-2xl font-extrabold text-ink">Security &amp; Privacy</h1>
+            <p className="text-sm text-ink-soft">Backend-enforced controls and verified system status</p>
           </div>
         </div>
-      </motion.div>
+        <Link to="/admin/integrations" className="inline-flex items-center gap-2 text-sm font-semibold text-brand-800 hover:text-brand-700">
+          Integrations <ArrowUpRight size={16} />
+        </Link>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* General */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="neo-card p-6"
-        >
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
-              <Settings size={20} />
+      {error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-ns-danger">{error}</div>}
+      {loading && <div className="neo-card p-5 text-sm text-ink-soft">Loading security status…</div>}
+
+      {security && !loading && (
+        <>
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="neo-card p-5">
+              <div className="flex items-center gap-2 text-brand-800"><ShieldCheck size={18} /><h2 className="font-bold text-ink">Role permissions</h2></div>
+              <p className="mt-3"><Status positive>Backend enforced</Status></p>
+              <p className="mt-2 text-xs text-ink-soft">Role checks protect API routes; resource-level scope checks also apply.</p>
             </div>
-            <h3 className="font-bold text-ink">General</h3>
-          </div>
-          <div className="space-y-4">
+            <div className="neo-card p-5">
+              <div className="flex items-center gap-2 text-brand-800"><LockKeyhole size={18} /><h2 className="font-bold text-ink">Staff MFA</h2></div>
+              <p className="mt-3"><Status>Not integrated</Status></p>
+              <p className="mt-2 text-xs text-ink-soft">{security.mfa.detail}</p>
+            </div>
+            <div className="neo-card p-5">
+              <div className="flex items-center gap-2 text-brand-800"><LockKeyhole size={18} /><h2 className="font-bold text-ink">Encryption</h2></div>
+              <p className="mt-3"><Status positive={security.encryption.frontend_https_configured}>Frontend {security.encryption.frontend_https_configured ? 'HTTPS' : 'not HTTPS'}</Status></p>
+              <p className="mt-2 text-xs text-ink-soft">Supabase URL: {security.encryption.supabase_https_configured == null ? 'not configured' : security.encryption.supabase_https_configured ? 'HTTPS configured' : 'not HTTPS configured'}. Database transport is not verified; at-rest encryption is not verifiable by this application.</p>
+            </div>
+            <div className="neo-card p-5">
+              <div className="flex items-center gap-2 text-brand-800"><Activity size={18} /><h2 className="font-bold text-ink">Data retention</h2></div>
+              <p className="mt-3"><Status>Not configured</Status></p>
+              <p className="mt-2 text-xs text-ink-soft">{security.data_retention.detail}</p>
+            </div>
+          </section>
+
+          <section className="neo-card p-5">
+            <h2 className="font-bold text-ink">Role-based permissions</h2>
+            <p className="mt-1 text-sm text-ink-soft">These are enforced by backend authorization checks, not browser-only controls.</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {security.permissions.map((permission) => (
+                <div key={permission.role} className="rounded-lg border border-ns-border bg-white p-4">
+                  <p className="font-semibold capitalize text-ink">{permission.role}</p>
+                  <p className="mt-1 text-sm text-ink-soft">{permission.enforcement}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="neo-card p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Activity size={18} className="text-brand-800" />
+                <div>
+                  <h2 className="font-bold text-ink">Audit log</h2>
+                  <p className="text-xs text-ink-soft">{audit?.total ?? 0} backend events · {DEMO_AUDIT_EVENTS.length} sample events · retention {security.audit_log.retention}</p>
+                </div>
+              </div>
+              <button type="button" className="neo-btn px-3 py-2 text-sm" onClick={() => void load()}>Refresh</button>
+            </div>
+            {displayAuditEvents.length > 0 ? (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[680px] text-left text-sm">
+                  <thead><tr className="border-b border-ns-border text-xs uppercase text-ink-faint"><th className="pb-2 pr-4">Source</th><th className="pb-2 pr-4">Time</th><th className="pb-2 pr-4">Actor</th><th className="pb-2 pr-4">Action</th><th className="pb-2">Outcome</th></tr></thead>
+                  <tbody>
+                    {displayAuditEvents.map((event) => (
+                      <tr key={event.event_id} className="border-b border-ns-border/70">
+                        <td className="py-3 pr-4"><Status positive={!event.is_demo}>{event.is_demo ? 'Demo' : 'Backend'}</Status></td>
+                        <td className="py-3 pr-4 text-ink-soft">{new Date(event.occurred_at).toLocaleString()}</td>
+                        <td className="py-3 pr-4">{event.actor}</td>
+                        <td className="py-3 pr-4">{event.action}</td>
+                        <td className="py-3"><Status positive={event.outcome.toUpperCase() === 'SUCCESS'}>{event.outcome}</Status></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="mt-4 text-sm text-ink-soft">No audit events have been recorded.</p>}
+          </section>
+
+          <section className="neo-card border border-dashed border-brand-300 bg-brand-50/30 p-5" aria-labelledby="security-demo-heading">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 id="security-demo-heading" className="font-bold text-ink">Example staff security configuration</h2>
+                <p className="mt-1 text-xs text-amber-800">{DEMO_DATA_NOTICE} These examples do not reflect actual staff accounts or change security settings.</p>
+              </div>
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase text-amber-900">Demo</span>
+            </div>
+            <div className="mt-4 overflow-x-auto rounded-lg border border-ns-border bg-white">
+              <table className="w-full min-w-[480px] text-left text-sm">
+                <thead><tr className="border-b border-ns-border text-xs uppercase text-ink-faint"><th className="px-3 py-2">Example staff account</th><th className="px-3 py-2">Role</th><th className="px-3 py-2">Example MFA state</th></tr></thead>
+                <tbody>{DEMO_STAFF_SECURITY.map((staff) => (
+                  <tr key={staff.name} className="border-b border-ns-border/70 last:border-0">
+                    <td className="px-3 py-3">{staff.name}</td>
+                    <td className="px-3 py-3">{staff.role}</td>
+                    <td className="px-3 py-3"><Status>{staff.mfa}</Status></td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {DEMO_ENCRYPTION_EXAMPLE.map((item) => (
+                <div key={item.control} className="rounded-lg border border-ns-border bg-white p-3">
+                  <p className="text-xs font-semibold uppercase text-ink-faint">{item.control}</p>
+                  <p className="mt-1 text-sm text-ink-soft">{item.status}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="neo-card grid gap-4 p-5 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-semibold text-ink mb-1.5">System name</label>
-              <input
-                value={form.systemName}
-                onChange={(e) => setForm({ ...form, systemName: e.target.value })}
-                className="neo-input"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-ink mb-1.5">Active AI model</label>
-              <select
-                value={form.aiModel}
-                onChange={(e) => setForm({ ...form, aiModel: e.target.value })}
-                className="neo-input"
-              >
-                <option>Gradient Boost v1.0</option>
-                <option>Random Forest v1.0</option>
-                <option>Logistic Regression v1.0</option>
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-semibold text-ink mb-1.5">High-risk threshold (%)</label>
-                <input
-                  type="number"
-                  value={form.riskThreshold}
-                  onChange={(e) => setForm({ ...form, riskThreshold: e.target.value })}
-                  className="neo-input"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-ink mb-1.5">Data retention (days)</label>
-                <input
-                  type="number"
-                  value={form.retentionDays}
-                  onChange={(e) => setForm({ ...form, retentionDays: e.target.value })}
-                  className="neo-input"
-                />
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* AI & ML */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="neo-card p-6"
-        >
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
-              <BrainCircuit size={20} />
-            </div>
-            <h3 className="font-bold text-ink">AI & Machine Learning</h3>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between rounded-2xl bg-mint-50/70 px-4 py-3">
-              <div>
-                <p className="text-sm font-bold text-ink">Automatic predictions</p>
-                <p className="text-xs text-ink-faint">Run daily risk predictions</p>
-              </div>
-              <button
-                onClick={() => toggle('autoPredictions')}
-                className={`w-12 h-6 rounded-full transition-colors relative ${
-                  form.autoPredictions ? 'bg-brand-500' : 'bg-gray-300'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                    form.autoPredictions ? 'translate-x-6.5' : 'translate-x-0.5'
-                  }`}
-                  style={{ left: form.autoPredictions ? 'auto' : '2px', right: form.autoPredictions ? '2px' : 'auto' }}
-                />
-              </button>
-            </div>
-            <div className="rounded-2xl bg-mint-50/70 p-4">
-              <p className="text-sm font-bold text-ink">Model performance</p>
-              <p className="text-xs text-ink-faint mt-1">
-                Gradient Boost v1.0 — Accuracy: 87.3% | Precision: 84.6% | Recall: 82.1%
-              </p>
-              <div className="mt-2 h-1.5 rounded-full bg-brand-200">
-                <div className="h-full w-[87%] rounded-full bg-brand-600" />
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Notifications */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="neo-card p-6"
-        >
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
-              <Bell size={20} />
-            </div>
-            <h3 className="font-bold text-ink">Notifications</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-2xl bg-mint-50/70 px-4 py-3">
-              <div>
-                <p className="text-sm font-bold text-ink">Email notifications</p>
-                <p className="text-xs text-ink-faint">Receive alerts via email</p>
-              </div>
-              <button
-                onClick={() => toggle('emailNotifications')}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  form.emailNotifications ? 'bg-brand-500' : 'bg-gray-300'
-                }`}
-              >
-                <span
-                  className={`block w-5 h-5 rounded-full bg-white shadow transition-transform translate-x-0.5 ${
-                    form.emailNotifications ? 'translate-x-6' : ''
-                  }`}
-                />
-              </button>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-mint-50/70 px-4 py-3">
-              <div>
-                <p className="text-sm font-bold text-ink">SMS notifications</p>
-                <p className="text-xs text-ink-faint">Receive alerts via SMS</p>
-              </div>
-              <button
-                onClick={() => toggle('smsNotifications')}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  form.smsNotifications ? 'bg-brand-500' : 'bg-gray-300'
-                }`}
-              >
-                <span
-                  className={`block w-5 h-5 rounded-full bg-white shadow transition-transform translate-x-0.5 ${
-                    form.smsNotifications ? 'translate-x-6' : ''
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Security */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="neo-card p-6"
-        >
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-10 h-10 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
-              <Shield size={20} />
-            </div>
-            <h3 className="font-bold text-ink">Security</h3>
-          </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between rounded-2xl bg-mint-50/70 px-4 py-3">
-              <div>
-                <p className="text-sm font-bold text-ink">Two-factor authentication</p>
-                <p className="text-xs text-ink-faint">Extra layer of security</p>
-              </div>
-              <button
-                onClick={() => toggle('twoFactor')}
-                className={`w-12 h-6 rounded-full transition-colors ${
-                  form.twoFactor ? 'bg-brand-500' : 'bg-gray-300'
-                }`}
-              >
-                <span
-                  className={`block w-5 h-5 rounded-full bg-white shadow transition-transform translate-x-0.5 ${
-                    form.twoFactor ? 'translate-x-6' : ''
-                  }`}
-                />
-              </button>
-            </div>
-            <div className="rounded-2xl bg-mint-50/70 p-4">
-              <p className="text-sm font-bold text-ink">Data encryption</p>
-              <p className="text-xs text-ink-faint mt-1">
-                All data encrypted at rest (AES-256) and in transit (TLS 1.3).
-              </p>
-              <div className="mt-2 flex items-center gap-2 text-xs text-emerald-600 font-semibold">
-                <Shield size={14} />
-                Active
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      <motion.section
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="neo-card p-6"
-        aria-labelledby="moodle-integration-heading"
-      >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 shrink-0 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800">
-              <Database size={20} />
+              <h2 className="font-bold text-ink">Privacy notice</h2>
+              <p className="mt-2"><Status>{security.privacy_notice.status.replace(/_/g, ' ')}</Status></p>
+              <p className="mt-2 text-sm text-ink-soft">{security.privacy_notice.detail}</p>
             </div>
             <div>
-              <h2 id="moodle-integration-heading" className="font-bold text-ink">Moodle integration</h2>
-              <p className="mt-1 text-sm text-ink-soft">
-                {moodleLoading
-                  ? 'Checking backend configuration…'
-                  : moodleResult
-                    ? `Connected to ${moodleResult.site_name}${moodleResult.release ? ` (${moodleResult.release})` : ''}.`
-                    : moodleStatus?.configured
-                      ? 'Configured on the backend; connection has not been tested in this session.'
-                      : 'Not configured. Add the Moodle URL and token to the backend environment.'}
-              </p>
-              {moodleStatus?.base_url && (
-                <p className="mt-1 text-xs text-ink-faint">Moodle URL: {moodleStatus.base_url}</p>
-              )}
-              {moodleError && (
-                <p role="alert" className="mt-2 text-sm text-red-700">{moodleError}</p>
-              )}
+              <h2 className="font-bold text-ink">Processing information</h2>
+              <p className="mt-2 text-sm text-ink-soft">NeuroSync processes academic, attendance and learning-platform indicators to support staff review. Risk scores are indicators for human review, not diagnoses or automated decisions.</p>
             </div>
-          </div>
-          <NeoButton
-            variant="secondary"
-            size="sm"
-            loading={moodleTesting}
-            disabled={moodleLoading || !moodleStatus?.configured}
-            onClick={testMoodleConnection}
-          >
-            Test connection
-          </NeoButton>
-        </div>
-      </motion.section>
-
-      {/* Save */}
-      <div className="flex justify-end">
-        <NeoButton onClick={handleSave} loading={saved}>
-          {saved ? 'Settings Saved!' : 'Save Settings'}
-        </NeoButton>
-      </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }

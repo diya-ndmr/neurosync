@@ -1,6 +1,23 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import {
+  Activity,
+  BarChart3,
+  BookOpen,
+  CalendarDays,
+  Cable,
+  ChevronLeft,
+  ClipboardList,
+  FileSpreadsheet,
+  Heart,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Sparkles,
+  UserRound,
+  Users,
+  type LucideIcon
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Logo from '../Logo';
 import { cn, initials } from '../../utils/helpers';
@@ -11,37 +28,39 @@ interface NavItem {
   label: string;
   translationKey?: string;
   path: string;
+  icon: LucideIcon;
 }
 
 const roleNav: Record<Role, NavItem[]> = {
   student: [
-    { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/student/dashboard' },
-    { label: 'Academics', translationKey: 'navigation.academics', path: '/student/academics' },
-    { label: 'Attendance', translationKey: 'navigation.attendance', path: '/student/attendance' },
-    { label: 'Wellbeing', translationKey: 'navigation.wellbeing', path: '/student/wellbeing' },
-    { label: 'Support plan', translationKey: 'navigation.supportPlan', path: '/student/recommendations' },
-    { label: 'Profile', translationKey: 'navigation.profile', path: '/student/profile' }
+    { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/student/dashboard', icon: LayoutDashboard },
+    { label: 'Academics', translationKey: 'navigation.academics', path: '/student/academics', icon: BookOpen },
+    { label: 'Attendance', translationKey: 'navigation.attendance', path: '/student/attendance', icon: CalendarDays },
+    { label: 'Wellbeing', translationKey: 'navigation.wellbeing', path: '/student/wellbeing', icon: Heart },
+    { label: 'Support plan', translationKey: 'navigation.supportPlan', path: '/student/recommendations', icon: Sparkles },
+    { label: 'Profile', translationKey: 'navigation.profile', path: '/student/profile', icon: UserRound }
   ],
   lecturer: [
-    { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/lecturer/dashboard' },
-    { label: 'Students needing support', translationKey: 'navigation.students', path: '/lecturer/students' },
-    { label: 'Class performance', translationKey: 'navigation.analytics', path: '/lecturer/analytics' },
-    { label: 'Learning support', path: '/lecturer/learning-support' },
-    { label: 'Class attendance', path: '/lecturer/attendance' }
+    { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/lecturer/dashboard', icon: LayoutDashboard },
+    { label: 'Students needing support', translationKey: 'navigation.students', path: '/lecturer/students', icon: Users },
+    { label: 'Class performance', translationKey: 'navigation.analytics', path: '/lecturer/analytics', icon: BarChart3 },
+    { label: 'Learning support', path: '/lecturer/learning-support', icon: BookOpen },
+    { label: 'Class attendance', path: '/lecturer/attendance', icon: CalendarDays }
   ],
   advisor: [
-    { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/advisor/dashboard' },
-    { label: 'Student Cases', translationKey: 'navigation.cases', path: '/advisor/cases' },
-    { label: 'Interventions', translationKey: 'navigation.interventions', path: '/advisor/interventions' },
-    { label: 'Wellness appointments', path: '/advisor/wellness-appointments' }
+    { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/advisor/dashboard', icon: LayoutDashboard },
+    { label: 'Student Cases', translationKey: 'navigation.cases', path: '/advisor/cases', icon: ClipboardList },
+    { label: 'Interventions', translationKey: 'navigation.interventions', path: '/advisor/interventions', icon: Activity },
+    { label: 'Wellness appointments', path: '/advisor/wellness-appointments', icon: Heart }
   ],
   admin: [
-    { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/admin/dashboard' },
-    { label: 'University overview', translationKey: 'navigation.universityOverview', path: '/admin/analytics' },
-    { label: 'User Management', translationKey: 'navigation.userManagement', path: '/admin/users' },
-    { label: 'CSV data', path: '/admin/csv-data' },
-    { label: 'System Configuration', translationKey: 'navigation.systemConfiguration', path: '/admin/settings' },
-    { label: 'Wellness appointments', path: '/admin/wellness-appointments' }
+    { label: 'Dashboard', translationKey: 'navigation.dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+    { label: 'University overview', translationKey: 'navigation.universityOverview', path: '/admin/analytics', icon: BarChart3 },
+    { label: 'User Management', translationKey: 'navigation.userManagement', path: '/admin/users', icon: Users },
+    { label: 'CSV data', path: '/admin/csv-data', icon: FileSpreadsheet },
+    { label: 'Integrations', path: '/admin/integrations', icon: Cable },
+    { label: 'System Configuration', translationKey: 'navigation.systemConfiguration', path: '/admin/settings', icon: Settings },
+    { label: 'Wellness appointments', path: '/admin/wellness-appointments', icon: Heart }
   ]
 };
 
@@ -80,7 +99,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const content = (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className={cn('flex items-center gap-2 py-4', collapsed ? 'justify-between px-3' : 'justify-between px-5')}>
+      <div       className={cn('flex items-center gap-2 py-5', collapsed ? 'justify-between px-3' : 'justify-between px-5')}>
         <Logo size="sm" showText={!collapsed} inverse />
         <button
           onClick={onToggle}
@@ -93,7 +112,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
 
       {/* User profile */}
       <div className="mx-3 mb-4">
-        <div className={cn('p-3 flex items-center gap-3 rounded-lg bg-white/5 border border-white/10', collapsed ? 'justify-center' : '')}>
+        <div className={cn('p-3 flex items-center gap-3 rounded-xl bg-white/[0.08] border border-white/10', collapsed ? 'justify-center' : '')}>
           <div className="w-10 h-10 rounded bg-white/10 text-white font-semibold flex items-center justify-center shrink-0">
             {initials(user.name)}
           </div>
@@ -116,15 +135,16 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             onClick={onMobileClose}
             className={({ isActive }) =>
               cn(
-                'flex items-center px-3 py-3 rounded text-sm font-medium transition-colors',
+                'flex items-center px-3 py-3 rounded-xl text-sm font-medium transition-colors',
                 isActive
-                  ? 'border-l-2 border-brand-300 bg-white/10 text-white'
+                  ? 'bg-white/10 text-white shadow-sm'
                   : 'text-white/75 hover:bg-white/5 hover:text-white',
                 collapsed && 'px-2 text-xs'
               )
             }
             title={collapsed ? (item.translationKey ? t(item.translationKey) : item.label) : undefined}
           >
+            <item.icon size={18} className="mr-3 shrink-0 opacity-80" aria-hidden="true" />
             <span>{item.translationKey ? t(item.translationKey) : item.label}</span>
           </NavLink>
         ))}
@@ -134,27 +154,30 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       <div className="px-3 py-4 space-y-1 border-t border-white/10">
         <button
           onClick={() => navigate(preferencesPath)}
-          className={cn('w-full min-h-11 flex items-center px-4 py-3 rounded text-sm font-medium text-white/75 hover:bg-white/5 hover:text-white transition-colors', collapsed && 'px-2 text-xs')}
+          className={cn('w-full min-h-11 flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/75 hover:bg-white/5 hover:text-white transition-colors', collapsed && 'px-2 text-xs')}
           aria-label={t('navigation.preferences')}
         >
+          <Settings size={18} className="shrink-0" aria-hidden="true" />
           <span>{t('navigation.preferences')}</span>
         </button>
         {user.role === 'student' && <button
           onClick={() => navigate('/student/settings')}
           className={cn(
-            'w-full flex items-center px-4 py-3 rounded text-sm font-medium text-white/75 hover:bg-white/5 hover:text-white transition-colors',
+            'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/75 hover:bg-white/5 hover:text-white transition-colors',
             collapsed && 'px-2 text-xs'
           )}
         >
+          <Settings size={18} className="shrink-0" aria-hidden="true" />
           <span>{t('navigation.settings')}</span>
         </button>}
         <button
           onClick={handleLogout}
           className={cn(
-            'w-full min-h-11 flex items-center px-4 py-3 rounded text-sm font-medium text-white/75 hover:bg-white/5 hover:text-white transition-colors',
+            'w-full min-h-11 flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/75 hover:bg-white/5 hover:text-white transition-colors',
             collapsed && 'px-2 text-xs'
           )}
         >
+          <LogOut size={18} className="shrink-0" aria-hidden="true" />
           <span>{t('navigation.logout')}</span>
         </button>
       </div>
@@ -166,7 +189,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          'hidden md:flex flex-col sticky top-0 h-screen bg-ns-black border-r border-white/10 shrink-0',
+          'ns-sidebar-panel hidden md:flex flex-col sticky top-0 h-screen border-r border-white/10 shrink-0',
           collapsed ? 'w-[184px]' : 'w-[256px]'
         )}
       >
@@ -188,6 +211,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 )
               }
             >
+              <item.icon size={18} aria-hidden="true" />
               {item.translationKey ? t(item.translationKey).split(' ')[0] : item.label.split(' ')[0]}
             </NavLink>
           ))}
@@ -205,7 +229,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
         <aside
           id="mobile-navigation-drawer"
           ref={drawerRef}
-          className="md:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] bg-ns-black shadow-xl"
+          className="ns-sidebar-panel md:hidden fixed left-0 top-0 bottom-0 z-50 w-[280px] shadow-xl"
           role="dialog"
           aria-modal="true"
           aria-label={t('navigation.primary')}

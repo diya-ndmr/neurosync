@@ -1,6 +1,8 @@
-import { motion } from 'framer-motion';
+import { Building2 } from 'lucide-react';
 import StatCard from '../../components/Cards/StatCard';
+import DashboardHero from '../../components/DashboardHero';
 import DataSourceNotice from '../../components/DataSourceNotice';
+import AdminModelPerformanceCard from '../../components/AdminModelPerformanceCard';
 import WeeklyBriefing from '../../components/WeeklyBriefing';
 import BarChartCard from '../../components/Charts/BarChartCard';
 import LineChartCard from '../../components/Charts/LineChartCard';
@@ -19,16 +21,9 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <DataSourceNotice source={source} />
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="neo-card p-7"
-      >
-        <h1 className="text-2xl md:text-3xl font-extrabold text-ink">University Administration</h1>
-        <p className="text-sm text-ink-soft mt-1">
-          A clear view of student progress, support needs, and outcomes.
-        </p>
-      </motion.div>
+      <DashboardHero
+        icon={<Building2 size={42} strokeWidth={1.5} />}
+      />
 
       {/* KPI stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5">
@@ -40,6 +35,7 @@ export default function AdminDashboard() {
       </div>
 
       <WeeklyBriefing />
+      <AdminModelPerformanceCard />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">

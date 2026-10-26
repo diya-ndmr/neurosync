@@ -27,8 +27,13 @@ export default function RecommendationCard({ recommendations, onComplete, comple
         <h3 className="font-semibold text-ns-text-primary">Suggested next steps</h3>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {recommendations.map((rec, i) => {
+      {recommendations.length === 0 ? (
+        <div className="chart-empty flex min-h-32 items-center justify-center rounded-xl border border-dashed border-ns-border px-4 text-center text-sm text-ns-text-muted">
+          No suggested next steps are available right now.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {recommendations.map((rec, i) => {
           const meta = categoryMeta[rec.category];
           const completed = rec.status === 'completed';
           return (
@@ -81,8 +86,9 @@ export default function RecommendationCard({ recommendations, onComplete, comple
               </div>
             </motion.div>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
     </motion.div>
   );
 }

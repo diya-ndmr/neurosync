@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { riskColor } from '../../utils/helpers';
 
 interface Props {
   title: string;
@@ -9,7 +8,14 @@ interface Props {
   index?: number;
 }
 
-const RISK_COLORS = ['var(--ns-success)', 'var(--ns-warning)', 'var(--ns-danger)'];
+const riskColorFor = (name: string, index: number) => {
+  switch (name.toUpperCase()) {
+    case 'LOW': return 'var(--ns-success)';
+    case 'MEDIUM': return 'var(--ns-warning)';
+    case 'HIGH': return 'var(--ns-danger)';
+    default: return ['var(--ns-chart-blue)', 'var(--ns-aqua)', 'var(--ns-chart-neutral)'][index % 3];
+  }
+};
 
 export default function PieChartCard({ title, subtitle, data, index = 0 }: Props) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
@@ -22,8 +28,10 @@ export default function PieChartCard({ title, subtitle, data, index = 0 }: Props
       className="neo-card p-5 md:p-6"
     >
       <div className="mb-4">
-        <h3 className="font-semibold text-ns-text-primary">{title}</h3>
-        {subtitle && <p className="text-xs text-ns-text-muted mt-0.5">{subtitle}</p>}
+        <div>
+          <h3 className="font-semibold text-ns-text-primary">{title}</h3>
+          {subtitle && <p className="text-xs text-ns-text-muted mt-0.5">{subtitle}</p>}
+        </div>
       </div>
 
       {data.length === 0 || total === 0 ? <div className="mt-4 flex h-56 items-center justify-center rounded-md border border-dashed border-ns-border text-sm text-ns-text-muted">No recorded data</div> : <div className="relative h-56 mt-4" aria-hidden="true">
@@ -35,13 +43,14 @@ export default function PieChartCard({ title, subtitle, data, index = 0 }: Props
               nameKey="name"
               cx="50%"
               cy="50%"
-              innerRadius={60}
-              outerRadius={85}
-              paddingAngle={4}
-              stroke="none"
+              innerRadius={62}
+              outerRadius={88}
+              paddingAngle={3}
+              stroke="var(--ns-surface)"
+              strokeWidth={3}
             >
               {data.map((entry, i) => (
-                <Cell key={entry.name} fill={RISK_COLORS[i % RISK_COLORS.length]} />
+                <Cell key={entry.name} fill={riskColorFor(entry.name, i)} />
               ))}
             </Pie>
             <Tooltip
@@ -58,22 +67,25 @@ export default function PieChartCard({ title, subtitle, data, index = 0 }: Props
             />
           </PieChart>
         </ResponsiveContainer>
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-3xl font-bold text-ns-text-primary">{total}</span>
-          <span className="text-[9px] font-semibold uppercase tracking-widest text-ns-text-muted">Total</span>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="text-3xl font-bold tracking-tight text-ns-text-primary">{total}</span>
         </div>
       </div>}
 
-      {data.length > 0 && total > 0 && <div className="mt-6 grid grid-cols-3 gap-2">
+      {data.length > 0 && total > 0 && <div className="mt-5 grid grid-cols-1 gap-2">
         {data.map((d, i) => (
-          <div key={d.name} className="rounded-lg bg-ns-surface-secondary px-2 py-2 border border-ns-border text-center">
-            <div
+          <div key={d.name} className="flex items-center gap-3 rounded-lg border border-ns-border bg-ns-surface-secondary/70 px-3 py-2">
+            <span
               aria-hidden="true"
-              className="w-2.5 h-2.5 rounded-full mx-auto mb-1.5"
-              style={{ background: RISK_COLORS[i % RISK_COLORS.length] }}
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ background: riskColorFor(d.name, i) }}
             />
-            <p className="text-sm font-semibold text-ns-text-primary">{d.value} <span className="font-normal">({Math.round((d.value / total) * 100)}%)</span></p>
-            <p className="mt-1 break-words text-xs font-semibold uppercase text-ns-text-muted">{d.name}</p>
+            <p className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wide text-ns-text-secondary">{d.name}</p>
+            <p className="text-xs font-bold text-ns-text-primary">{d.value}</p>
+            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-ns-border" aria-hidden="true">
+              <div className="h-full rounded-full" style={{ width: `${Math.round((d.value / total) * 100)}%`, background: riskColorFor(d.name, i) }} />
+            </div>
+            <p className="w-9 text-right text-xs font-semibold text-ns-text-muted">{Math.round((d.value / total) * 100)}%</p>
           </div>
         ))}
       </div>}

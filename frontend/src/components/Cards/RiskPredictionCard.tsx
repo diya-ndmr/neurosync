@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import type { RiskPrediction } from '../../types';
-import { cn, riskColor } from '../../utils/helpers';
+import { cn } from '../../utils/helpers';
 import { useAccessibility } from '../../context/AccessibilityContext';
 
 interface Props {
@@ -23,7 +23,6 @@ export default function RiskPredictionCard({ risk }: Props) {
     );
   }
 
-  const color = riskColor(risk.risk_level);
   const score = risk.risk_score;
   const isMachineLearningPrediction = risk.model_version.startsWith('ml_');
 
@@ -49,9 +48,10 @@ export default function RiskPredictionCard({ risk }: Props) {
             {score}<span className="ml-1 text-sm font-normal text-ns-text-muted">/100</span>
           </span>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded bg-ns-divider" role="img" aria-label={`${t('risk.score')}: ${score} out of 100`}>
-          <div className="h-full" style={{ width: `${score}%`, backgroundColor: color }} />
+        <div className="relative mt-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 shadow-inner" role="img" aria-label={`${t('risk.score')}: ${score} out of 100`}>
+          <span className="absolute -top-1.5 h-6 w-1 rounded-full border border-white bg-ns-text-primary shadow-md" style={{ left: `calc(${Math.min(100, Math.max(0, score))}% - 2px)` }} />
         </div>
+        <div className="mt-2 flex justify-between text-[10px] font-medium text-ns-text-muted"><span>0</span><span>50</span><span>100</span></div>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ns-text-muted">
           <span>Model: {risk.model_version}</span>
           <span>Updated: {new Date(risk.created_at).toLocaleDateString()}</span>

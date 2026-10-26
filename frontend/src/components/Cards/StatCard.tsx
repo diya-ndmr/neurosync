@@ -25,11 +25,11 @@ export default function StatCard({
   trendValue,
 }: StatCardProps) {
   return (
-    <div className="neo-card p-4">
+    <div className="neo-card stat-card p-5">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-ns-text-secondary">{title}</p>
-          <p className="mt-1 text-2xl font-semibold text-ns-text-primary">{value}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-ns-text-primary">{value}</p>
           {(subtitle || trendValue) && (
             <p className="mt-1 text-xs text-ns-text-muted flex items-center gap-1.5">
               {trendValue && (

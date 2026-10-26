@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Clock3, Mail, Plus, Send, Shield, Sparkles } from 'lucide-react';
 import NeoButton from '../../components/Buttons/NeoButton';
 import ProgressComparisonCard from '../../components/Cards/ProgressComparisonCard';
+import RiskExplanationPanel from '../../components/RiskExplanationPanel';
 import { useToast } from '../../components/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
@@ -93,6 +94,12 @@ export default function CaseReview() {
         <div className="mt-4 rounded-lg border border-ns-border bg-ns-surface-secondary p-4"><p className="text-xs font-semibold uppercase text-ns-text-muted">Lecturer referral</p><p className="mt-1 text-sm">{referral.reason}</p>{referral.lecturer_notes && <p className="mt-2 text-sm text-ns-text-secondary">Shared lecturer notes: {referral.lecturer_notes}</p>}</div>
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3"><Metric label="Attendance" value={`${review.metrics.attendance}%`} /><Metric label="Assessment average" value={`${review.metrics.academic_average}%`} /><Metric label="Submission rate" value={`${review.metrics.submission_rate}%`} /><Metric label="Engagement" value={`${review.metrics.engagement_score}/100`} /></div>
       </section>
+
+      <RiskExplanationPanel
+        risk={review.risk}
+        metrics={review.metrics}
+        recommendations={data.recommendations.map((item) => item.strategy)}
+      />
 
       <section className="neo-card p-5"><h2 className="font-semibold">Academic evidence</h2><ul className="mt-3 space-y-2">{review.risk.evidence.map((item) => <li key={item} className="text-sm text-ns-text-secondary">• {item}</li>)}</ul><p className="mt-3 text-xs text-ns-text-muted">The data describes academic indicators and does not establish personal circumstances or causation.</p></section>
 

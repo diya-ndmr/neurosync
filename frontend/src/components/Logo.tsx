@@ -61,7 +61,7 @@ export default function Logo({ size = 'md', showText = true, inverse = false, cl
             Sync
           </span>
           {size === 'lg' || size === 'xl' ? (
-            <p className="text-[11px] font-medium text-ink-faint tracking-wide uppercase">
+            <p className={cn('text-[11px] font-medium tracking-wide uppercase', inverse ? 'text-white/60' : 'text-ink-faint')}>
               University Intelligence
             </p>
           ) : null}
@@ -70,4 +70,3 @@ export default function Logo({ size = 'md', showText = true, inverse = false, cl
     </div>
   );
 }
-

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowRight, Building2, GraduationCap } from 'lucide-react';
 import Logo from '../../components/Logo';
 import NeoButton from '../../components/Buttons/NeoButton';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +23,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [portal, setPortal] = useState<'student' | 'staff'>('student');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [demoProfiles, setDemoProfiles] = useState<DemoProfile[]>([]);
@@ -93,51 +94,84 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-ns-background text-ns-text-primary flex items-center justify-center p-4 sm:p-6">
+    <div className="login-stage min-h-screen text-ns-text-primary flex items-center justify-center p-4 sm:p-6">
 
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-[1000px] grid lg:grid-cols-2 gap-0 neo-card overflow-hidden"
+        className="login-shell w-full max-w-[1120px] grid md:grid-cols-[0.95fr_1.05fr] gap-0 neo-card overflow-hidden"
       >
         {/* Left side: Hero/Info */}
-        <div className="hidden lg:flex flex-col justify-between p-12 bg-ns-black border-r border-white/10">
-          <div>
+        <div className="login-hero hidden md:flex flex-col justify-between p-8 lg:p-12 xl:p-14">
+          <div className="relative z-10">
             <Logo size="lg" inverse />
           </div>
-          <div className="space-y-6">
-            <h1 className="text-4xl font-bold leading-tight text-white tracking-tight">
-              Predict.
+          <div className="relative z-10 max-w-lg space-y-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">Student-first support</p>
+            <h1 className="text-4xl xl:text-[3.25rem] font-bold leading-[1.12] text-white tracking-tight">
+              Intelligent campus
               <br />
-              <span className="text-brand-300">Explain.</span>
-              <br />
-              Intervene.
+              <span className="text-emerald-200">wellbeing platform</span>
             </h1>
-            <p className="text-white/70 text-lg leading-relaxed font-medium">
-              NeuroSync brings academic progress, attendance, and support work into one clear place.
+            <p className="max-w-md text-white/75 text-lg leading-relaxed">
+              Proactive care, clearer insights, and personalized guidance to help every student move forward.
             </p>
-            <div className="flex gap-4">
-              <div className="h-1 w-12 bg-brand-500 rounded-full" />
-              <div className="h-1 w-6 bg-brand-700 rounded-full" />
+            <div className="grid grid-cols-3 gap-3 pt-3">
+              {[
+                ['01', 'Academic progress'],
+                ['02', 'Attendance'],
+                ['03', 'Student support']
+              ].map(([number, label]) => (
+                <div key={number} className="border-t border-white/25 pt-3">
+                  <p className="text-xs font-semibold text-emerald-200">{number}</p>
+                  <p className="mt-1 text-xs font-medium text-white/75">{label}</p>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="flex items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/55">
-            <span>© 2026 NeuroSync</span>
-            <span className="w-1.5 h-1.5 bg-brand-500 rounded-full" />
-            <span>Neuform v3.0</span>
+          <div className="relative z-10 flex items-center gap-3 text-xs font-medium text-white/60">
+            <span className="h-2 w-2 rounded-full bg-emerald-300" />
+            <span>Built to support the whole student journey</span>
           </div>
         </div>
 
         {/* Right side: Form */}
-        <div className="p-7 sm:p-8 md:p-14 flex flex-col justify-center bg-white">
-          <div className="flex flex-col items-center lg:items-start mb-10">
-            <div className="lg:hidden mb-6">
+        <div className="login-form-panel p-7 sm:p-8 md:p-12 xl:p-14 flex flex-col justify-center">
+          <div className="flex flex-col items-center md:items-start mb-8">
+            <div className="md:hidden mb-6">
               <Logo size="md" />
             </div>
-            <h2 className="text-3xl font-bold text-ns-text-primary">Authentication</h2>
-            <p className="text-ns-text-muted font-medium text-sm mt-2">Access your intelligence dashboard</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">NeuroSync portal</p>
+            <h2 className="text-3xl font-bold tracking-tight text-ns-text-primary">Welcome back</h2>
+            <p className="text-ns-text-muted font-medium text-sm mt-2">Choose your portal to continue.</p>
           </div>
+
+          <div className="mb-7 grid grid-cols-2 gap-3" aria-label="Choose your portal">
+            <button
+              type="button"
+              aria-pressed={portal === 'student'}
+              onClick={() => setPortal('student')}
+              className={`portal-choice flex min-h-[76px] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${portal === 'student' ? 'portal-choice-active' : 'border-ns-border bg-ns-surface hover:bg-ns-surface-secondary'}`}
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-800"><GraduationCap size={20} /></span>
+              <span><span className="block text-sm font-semibold text-ns-text-primary">Student</span><span className="mt-0.5 block text-xs text-ns-text-muted">My learning</span></span>
+            </button>
+            <button
+              type="button"
+              aria-pressed={portal === 'staff'}
+              onClick={() => setPortal('staff')}
+              className={`portal-choice flex min-h-[76px] items-center gap-3 rounded-xl border p-3 text-left transition-colors ${portal === 'staff' ? 'portal-choice-active' : 'border-ns-border bg-ns-surface hover:bg-ns-surface-secondary'}`}
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-800"><Building2 size={20} /></span>
+              <span><span className="block text-sm font-semibold text-ns-text-primary">University staff</span><span className="mt-0.5 block text-xs text-ns-text-muted">Lecturer · Advisor · Admin</span></span>
+            </button>
+          </div>
+
+          <p className="mb-5 text-sm font-medium text-ns-text-secondary">
+            {portal === 'student' ? 'Sign in to your student workspace.' : 'Sign in to your university staff workspace.'}
+          </p>
+          <p className="-mt-4 mb-5 text-xs text-ns-text-muted">Your account role determines which workspace opens after sign-in.</p>
 
           {error && (
             <motion.div

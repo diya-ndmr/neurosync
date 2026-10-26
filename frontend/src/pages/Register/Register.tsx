@@ -76,19 +76,19 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-ai-gradient flex flex-col lg:flex-row">
+    <div className="login-stage min-h-screen flex flex-col lg:flex-row">
       {/* Left panel */}
-      <div className="hidden lg:flex flex-col justify-between p-12 w-1/2">
-        <Logo size="lg" />
+      <div className="login-hero hidden lg:flex flex-col justify-between p-12 w-1/2">
+        <Logo size="lg" inverse />
         <div className="space-y-6">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl font-extrabold leading-tight text-ink tracking-tight"
+            className="text-5xl font-extrabold leading-tight text-white tracking-tight"
           >
             Join the
             <br />
-            <span className="text-brand-600">Intelligent</span>
+            <span className="text-emerald-200">Intelligent</span>
             <br />
             Campus
           </motion.h1>
@@ -96,17 +96,17 @@ export default function Register() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="text-ink-soft max-w-md leading-relaxed"
+            className="text-white/75 max-w-md leading-relaxed"
           >
             Create your NeuroSync account and unlock AI-powered insights into your academic
             journey — with proactive support every step of the way.
           </motion.p>
         </div>
-        <p className="text-xs text-ink-faint">© 2025 NeuroSync · University Intelligence Platform</p>
+        <p className="text-xs text-white/60">© 2025 NeuroSync · University Intelligence Platform</p>
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex items-center justify-center p-6 py-12">
+      <div className="login-form-panel flex-1 flex items-center justify-center p-6 py-12">
         <motion.div
           initial={{ opacity: 0, y: 24, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}

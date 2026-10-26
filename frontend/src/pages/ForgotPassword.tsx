@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import NeoButton from '../components/Buttons/NeoButton';
+import Logo from '../components/Logo';
 import { requireSupabase, supabaseErrorMessage } from '../services/supabase';
 
 export default function ForgotPassword() {
@@ -29,22 +30,16 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-ai-gradient flex items-center justify-center p-6">
+    <div className="login-stage min-h-screen flex items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="w-full max-w-md"
+        className="login-form-panel neo-card w-full max-w-md p-8 md:p-10"
       >
-        <div className="neo-card p-8 md:p-10">
+        <div>
           <div className="flex flex-col items-center mb-8">
-            <div className="neo-card p-4 mb-5">
-              <img
-                src="/src/assets/neurosync-logo/neurosync-logo.jpg"
-                alt="NeuroSync logo"
-                className="w-20 h-20 rounded-3xl object-cover"
-              />
-            </div>
+            <Logo size="lg" className="mb-5" />
             <h2 className="text-2xl font-extrabold text-ink tracking-tight">
               {sent ? 'Check your email' : 'Reset password'}
             </h2>

@@ -36,6 +36,7 @@ const AdminAnalytics = lazy(() => import('../pages/AdminPages/Analytics'));
 const AdminUsers = lazy(() => import('../pages/AdminPages/Users'));
 const AdminSettings = lazy(() => import('../pages/AdminPages/Settings'));
 const AdminCsvData = lazy(() => import('../pages/AdminPages/CsvData'));
+const AdminIntegrations = lazy(() => import('../pages/AdminPages/Integrations'));
 const AdminWellnessAppointments = lazy(() => import('../pages/AdvisorPages/WellnessAppointments'));
 
 const NotFound = lazy(() => import('../pages/NotFound'));
@@ -106,6 +107,7 @@ export const router = createBrowserRouter([
           { path: '/admin/users', element: withSuspense(<AdminUsers />) },
           { path: '/admin/students/:studentId', element: withSuspense(<LecturerStudentReview />) },
           { path: '/admin/settings', element: withSuspense(<AdminSettings />) },
+          { path: '/admin/integrations', element: withSuspense(<AdminIntegrations />) },
           { path: '/admin/csv-data', element: withSuspense(<AdminCsvData />) },
           { path: '/admin/wellness-appointments', element: withSuspense(<AdminWellnessAppointments />) },
           { path: '/admin/preferences', element: withSuspense(<AccessibilitySettings />) }

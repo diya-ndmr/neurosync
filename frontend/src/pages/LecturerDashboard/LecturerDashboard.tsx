@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion';
+import { GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '../../components/Cards/StatCard';
+import DashboardHero from '../../components/DashboardHero';
 import BarChartCard from '../../components/Charts/BarChartCard';
 import LineChartCard from '../../components/Charts/LineChartCard';
 import PieChartCard from '../../components/Charts/PieChartCard';
@@ -23,17 +25,16 @@ export default function LecturerDashboard() {
   return (
     <div className="space-y-6">
       <DataSourceNotice source={source} />
-      <section>
-        <h1 className="text-2xl font-semibold text-ns-text-primary">Lecturer dashboard</h1>
-        <p className="mt-1 text-sm text-ns-text-secondary">Class performance and students requiring follow-up.</p>
-      </section>
+      <DashboardHero
+        icon={<GraduationCap size={42} strokeWidth={1.5} />}
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         <StatCard title="Students" value={data.total_students} />
         <StatCard title="Average mark" value={`${data.average_mark}%`} />
         <StatCard title="Average attendance" value={`${data.average_attendance}%`} />
-        <StatCard title="Students needing support" value={data.students_at_risk} trend="down" trendValue={`${Math.round((data.students_at_risk / data.total_students) * 100)}%`} />
+        <StatCard title="Students needing support" value={data.students_at_risk} subtitle="Flagged for follow-up" />
       </div>
 
       <WeeklyBriefing />
