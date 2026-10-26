@@ -6,7 +6,9 @@ import ProgressComparisonCard from '../../components/Cards/ProgressComparisonCar
 import RiskExplanationPanel from '../../components/RiskExplanationPanel';
 import { useToast } from '../../components/Toast';
 import { useAuth } from '../../context/AuthContext';
-import { api } from '../../services/api';
+import { api, isApiUnavailableError } from '../../services/api';
+import { advisorDemoReferral } from '../../services/advisorDemoData';
+import { lecturerDashboard } from '../../services/mockData';
 import type { LmsIntervention, LmsInterventionComparison, LmsReferral, LmsStudentReview } from '../../types';
 import { riskBg } from '../../utils/helpers';
 
@@ -35,6 +37,7 @@ export default function CaseReview() {
   const { token } = useAuth();
   const { showToast } = useToast();
   const [data, setData] = useState<CaseDetail | null>(null);
+  const [demoReferral, setDemoReferral] = useState<LmsReferral | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
@@ -56,8 +59,16 @@ export default function CaseReview() {
     try {
       const result = await api.get<CaseDetail>(`/workflow/advisor/referrals/${referralId}`, token || undefined);
       setData(result);
+      setDemoReferral(null);
+      setError('');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Could not load referral');
+      const sample = isApiUnavailableError(requestError) ? advisorDemoReferral(referralId) : undefined;
+      if (sample) {
+        setDemoReferral(sample);
+        setError('');
+      } else {
+        setError(requestError instanceof Error ? requestError.message : 'Could not load referral');
+      }
     }
   };
   useEffect(() => { void load(); }, [referralId, token]);
@@ -68,6 +79,32 @@ export default function CaseReview() {
     catch (requestError) { const message = requestError instanceof Error ? requestError.message : 'Action failed'; setError(message); showToast(message, 'error'); }
     finally { setBusy(false); }
   };
+
+  const demoStudent = demoReferral && lecturerDashboard.students.find((student) => student.student_number === demoReferral.student_id);
+  if (demoReferral && demoStudent) return (
+    <div className="space-y-5">
+      <Link to="/advisor/cases" className="inline-flex items-center gap-2 text-sm font-medium text-brand-800"><ArrowLeft size={16} /> Advisor cases</Link>
+      <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><strong>Demo mode · backend unavailable.</strong> This is an illustrative, read-only student record shared with the Lecturer view. No advisor actions are enabled.</div>
+      <section className="neo-card p-5 md:p-6">
+        <p className="text-xs font-semibold uppercase text-ns-text-muted">Demo referral {demoReferral.referral_id}</p>
+        <h1 className="mt-1 text-2xl font-bold">{demoStudent.name}</h1>
+        <p className="mt-1 text-sm text-ns-text-secondary">{demoStudent.student_number} · {demoStudent.module}</p>
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Metric label="Risk category" value={demoReferral.risk_level} />
+          <Metric label="Illustrative risk score" value={`${demoReferral.risk_score}%`} />
+          <Metric label="Average mark" value={`${demoStudent.average_mark}%`} />
+          <Metric label="Attendance" value={`${demoStudent.attendance}%`} />
+        </div>
+      </section>
+      <section className="neo-card p-5">
+        <h2 className="font-semibold">Why was this student flagged?</h2>
+        <p className="mt-2 text-sm text-ns-text-secondary">{demoStudent.ai_explanation}</p>
+        <p className="mt-3 text-xs text-ns-text-muted">Data period: illustrative frontend demo records only; no live LMS period is available.</p>
+        <p className="mt-3 text-sm"><strong>Possible next step:</strong> review the available academic indicators with the student and agree on appropriate support.</p>
+        <p className="mt-3 text-xs text-ns-text-muted">This risk score is an illustrative indicator, not a diagnosis or a validated assessment of this student.</p>
+      </section>
+    </div>
+  );
 
   if (error && !data) return <div role="alert" className="neo-card p-6 text-ns-danger">{error}</div>;
   if (!data) return <div className="py-12 text-center text-sm text-ns-text-muted">Loading referral…</div>;

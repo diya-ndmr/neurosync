@@ -1,9 +1,24 @@
 const configuredApiUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, '');
+const apiConfigured = Boolean(configuredApiUrl) || !import.meta.env.PROD;
 export const API_BASE = configuredApiUrl
   ? configuredApiUrl.endsWith('/api')
     ? configuredApiUrl
     : `${configuredApiUrl}/api`
   : '/api';
+
+export class ApiUnavailableError extends Error {
+  constructor() {
+    super(
+      'The NeuroSync API is unavailable. Configure VITE_API_URL with the deployed backend URL and allow this frontend origin in backend CORS_ORIGINS.',
+    );
+    this.name = 'ApiUnavailableError';
+  }
+}
+
+export function isApiUnavailableError(error: unknown): boolean {
+  return error instanceof ApiUnavailableError
+    || (error instanceof Error && /failed to fetch|networkerror|load failed/i.test(error.message));
+}
 
 export class ApiError extends Error {
   status: number;
@@ -20,14 +35,21 @@ interface RequestOptions {
 }
 
 async function request<T>(path: string, { method = 'GET', body, token }: RequestOptions = {}): Promise<T> {
+  if (!apiConfigured) throw new ApiUnavailableError();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined
+    });
+  } catch (error) {
+    if (error instanceof TypeError) throw new ApiUnavailableError();
+    throw error;
+  }
 
   if (!res.ok) {
     let message = `Request failed with status ${res.status}`;
@@ -49,9 +71,16 @@ async function request<T>(path: string, { method = 'GET', body, token }: Request
 }
 
 async function requestBlob(path: string, token?: string): Promise<Blob> {
+  if (!apiConfigured) throw new ApiUnavailableError();
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_BASE}${path}`, { headers });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { headers });
+  } catch (error) {
+    if (error instanceof TypeError) throw new ApiUnavailableError();
+    throw error;
+  }
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
     try {
@@ -67,9 +96,16 @@ async function requestBlob(path: string, token?: string): Promise<Blob> {
 }
 
 async function requestForm<T>(path: string, form: FormData, token?: string): Promise<T> {
+  if (!apiConfigured) throw new ApiUnavailableError();
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: form });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: form });
+  } catch (error) {
+    if (error instanceof TypeError) throw new ApiUnavailableError();
+    throw error;
+  }
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
     try {

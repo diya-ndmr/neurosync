@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { CalendarClock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
+import { api, isApiUnavailableError } from '../services/api';
+import { advisorDemoBriefing } from '../services/advisorDemoData';
 
 interface BriefingItem {
   type: string;
@@ -27,7 +28,7 @@ interface Briefing {
 const label = (value: string) => value.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 export default function WeeklyBriefing() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [briefing, setBriefing] = useState<Briefing | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -41,10 +42,17 @@ export default function WeeklyBriefing() {
     let active = true;
     api.get<Briefing>('/workflow/weekly-briefing', token)
       .then((result) => { if (active) setBriefing(result); })
-      .catch((requestError: Error) => { if (active) setError(requestError.message); })
+      .catch((requestError: unknown) => {
+        if (!active) return;
+        if (user?.role === 'advisor' && isApiUnavailableError(requestError)) {
+          setBriefing(advisorDemoBriefing);
+        } else {
+          setError(requestError instanceof Error ? requestError.message : 'Could not load recorded activity.');
+        }
+      })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [token]);
+  }, [token, user?.role]);
 
   return (
     <section className="neo-card overflow-hidden" aria-labelledby="weekly-briefing-title">
@@ -66,6 +74,7 @@ export default function WeeklyBriefing() {
               <p className="mt-1 text-xs text-ns-text-secondary">{[item.referral_id, item.module_id, item.risk_level && `${item.risk_level} risk`, item.urgency, item.strategy, item.follow_up_date && `Follow-up ${item.follow_up_date}`, item.status && label(item.status)].filter(Boolean).join(' · ')}</p>
             </li>)}</ul>}
             {briefing.items.length === 0 && <p className="mt-3 text-sm text-ns-text-muted">No matching recorded activity for this period.</p>}
+            {briefing.role === 'advisor' && briefing.data_basis.includes('Illustrative demo') && <p role="status" className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900">Demo mode · backend unavailable. This activity is illustrative and read-only.</p>}
             <p className="mt-4 border-t border-ns-divider pt-3 text-xs text-ns-text-muted">{briefing.data_basis}</p>
           </div>}
     </section>

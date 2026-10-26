@@ -10,8 +10,9 @@ import ActionQueue from '../../components/ActionQueue';
 import SupportRequestQueue from '../../components/SupportRequestQueue';
 import ImportedDemoDatasetSection, { type ImportedDemoDataset } from '../../components/ImportedDemoDataset';
 import { useAuth } from '../../context/AuthContext';
-import { api } from '../../services/api';
+import { api, isApiUnavailableError } from '../../services/api';
 import { lecturerDashboard } from '../../services/mockData';
+import { advisorDemoReferrals, advisorDemoSummary } from '../../services/advisorDemoData';
 import type { LmsReferral } from '../../types';
 import { riskBg } from '../../utils/helpers';
 
@@ -28,12 +29,21 @@ export default function AdvisorDashboard() {
   const [data, setData] = useState<AdvisorQueue | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
     let active = true;
     api.get<AdvisorQueue>('/workflow/advisor/dashboard', token || undefined)
-      .then((queue) => { if (active) setData(queue); })
-      .catch((requestError: Error) => { if (active) setError(requestError.message); })
+      .then((queue) => { if (active) { setData(queue); setDemoMode(false); setError(''); } })
+      .catch((requestError: unknown) => {
+        if (!active) return;
+        if (isApiUnavailableError(requestError)) {
+          setData({ summary: advisorDemoSummary, items: advisorDemoReferrals });
+          setDemoMode(true);
+        } else {
+          setError(requestError instanceof Error ? requestError.message : 'Could not load student cases.');
+        }
+      })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [token]);
@@ -47,14 +57,15 @@ export default function AdvisorDashboard() {
   const demoReviewCount = demoStudents.filter((student) => student.risk_level !== 'LOW').length;
   return (
     <div className="space-y-6">
+      {demoMode && <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950"><strong>Demo mode · backend unavailable.</strong> The data on this page is illustrative and read-only. Configure the production API URL to restore live advisor workflows.</div>}
       <DashboardHero
         icon={<Sparkles size={42} strokeWidth={1.5} />}
       />
 
       <section aria-labelledby="native-lms-workflow-title">
         <div className="mb-3">
-          <h2 id="native-lms-workflow-title" className="font-semibold text-ns-text-primary">Live LMS workflow</h2>
-          <p className="mt-1 text-xs text-ns-text-secondary">These are live backend workflow counts. Sample students are displayed separately below and do not create referrals or cases.</p>
+          <h2 id="native-lms-workflow-title" className="font-semibold text-ns-text-primary">{demoMode ? 'Demo advisor workflow' : 'Live LMS workflow'}</h2>
+          <p className="mt-1 text-xs text-ns-text-secondary">{demoMode ? 'Illustrative counts generated from the shared frontend demo roster. No backend records or advisor actions are available.' : 'These are live backend workflow counts. Sample students are displayed separately below and do not create referrals or cases.'}</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard title="New referrals" value={summary.new_referrals} />
@@ -99,7 +110,7 @@ export default function AdvisorDashboard() {
         </div>
       </section>
 
-      <ImportedDemoDatasetSection dataset={data.imported_demo_dataset ?? null} />
+      {!demoMode && <ImportedDemoDatasetSection dataset={data.imported_demo_dataset ?? null} />}
       <WeeklyBriefing />
       <ActionQueue />
       <SupportRequestQueue />
