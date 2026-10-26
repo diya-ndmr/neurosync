@@ -124,6 +124,13 @@ npm run build
 
 The original Microsoft Fabric project identified at-risk students through a Lakehouse, PySpark notebooks, intelligence tables, a semantic model, dashboards, and an AI agent.
 
-Team: Diya Nandkoomar, Vhutali, Sinezipho, Siphiwe, and Zinhle.
+Team: Diya, Vhutali, Sinezipho, Siphiwe, and Zinhle.
 
 Status: Microsoft Fabric Hackathon – 1st Place Winner.
+
+
+Current Project - Python 
+Diya Nandkoomar - Front End 
+Siphiwe Sithebe - Back End
+Zinhle Dlamini - Business Analysis 
+App of the year 2026 - FNB
