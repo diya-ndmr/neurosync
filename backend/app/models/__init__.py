@@ -4,6 +4,7 @@ from .module import Module
 from .assessment import Assessment
 from .extended_data import ExtendedAssessmentFeedback, ExtendedQuizQuestionResult
 from .attendance import Attendance
+from .csv_import_history import CsvImportHistory
 from .study_session import StudySession
 from .mood_checkin import MoodCheckin
 from .risk_prediction import RiskPrediction
@@ -29,6 +30,7 @@ __all__ = [
     "ExtendedAssessmentFeedback",
     "ExtendedQuizQuestionResult",
     "Attendance",
+    "CsvImportHistory",
     "StudySession",
     "MoodCheckin",
     "RiskPrediction",

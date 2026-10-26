@@ -16,6 +16,7 @@ from app.middleware.security import get_current_user
 from app.models.assessment import Assessment
 from app.models.audit_event import AuditEvent
 from app.models.attendance import Attendance
+from app.models.csv_import_history import CsvImportHistory
 from app.models.module import Module
 from app.models.student import StudentProfile
 from app.models.user import User, UserRole
@@ -143,6 +144,9 @@ def test_student_import_preview_create_update_and_explicit_upsert(csv_client):
         profile = db.query(StudentProfile).filter_by(student_number="STU002").one()
         assert (profile.surname, profile.programme, profile.year_level) == ("Changed", "Data Science", 3)
         assert db.query(StudentProfile).count() == 2
+        history = db.query(CsvImportHistory).all()
+        assert any(item.outcome == "SUCCESS" and item.persisted_rows == 1 for item in history)
+        assert any(item.outcome == "REJECTED" and item.errors for item in history)
 
 
 def test_module_import_supports_create_and_explicit_update(csv_client):

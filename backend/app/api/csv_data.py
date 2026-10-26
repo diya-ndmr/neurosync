@@ -18,6 +18,7 @@ from app.database.connection import get_db
 from app.middleware.security import require_role
 from app.models.assessment import Assessment
 from app.models.attendance import Attendance
+from app.models.csv_import_history import CsvImportHistory
 from app.models.module import Module
 from app.models.student import StudentProfile
 from app.models.user import User, UserRole
@@ -384,7 +385,20 @@ def _audit_import(
     request: Request,
     dataset: str,
     outcome: str,
+    summary: dict[str, Any],
 ) -> None:
+    errors = summary.get("errors", [])
+    db.add(CsvImportHistory(
+        actor_id=user.id,
+        dataset=dataset,
+        outcome=outcome,
+        total_rows=summary.get("total_rows", 0),
+        valid_rows=summary.get("valid_rows", 0),
+        invalid_rows=summary.get("invalid_rows", 0),
+        persisted_rows=summary.get("persisted_rows", 0),
+        errors=errors[:50],
+        errors_truncated=summary.get("errors_truncated", False) or len(errors) > 50,
+    ))
     record_audit_event(
         db,
         action=f"CSV_IMPORT_{dataset.upper()}",
@@ -457,7 +471,7 @@ async def import_csv(
     errors.extend(database_errors)
     summary = _summary(total_rows, rows, errors, preview=False)
     if errors or not rows:
-        _audit_import(db, current_user, request, dataset, "REJECTED")
+        _audit_import(db, current_user, request, dataset, "REJECTED", summary)
         db.commit()
         raise HTTPException(status_code=422, detail=summary)
 
@@ -515,11 +529,12 @@ async def import_csv(
                 ))
                 created += 1
 
-        _audit_import(db, current_user, request, dataset, "SUCCESS")
+        summary["persisted_rows"] = created + updated
+        _audit_import(db, current_user, request, dataset, "SUCCESS", summary)
         db.commit()
     except SQLAlchemyError as error:
         db.rollback()
-        _audit_import(db, current_user, request, dataset, "FAILURE")
+        _audit_import(db, current_user, request, dataset, "FAILURE", summary)
         db.commit()
         logger.exception("csv_import_commit_failed", extra={"dataset": dataset, "user_id": current_user.id})
         raise HTTPException(
@@ -527,7 +542,6 @@ async def import_csv(
             detail="CSV records could not be committed. No records were imported.",
         ) from error
 
-    summary["persisted_rows"] = created + updated
     summary["created_rows"] = created
     summary["updated_rows"] = updated
     return summary

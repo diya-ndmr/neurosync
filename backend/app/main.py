@@ -9,6 +9,7 @@ from app.config.settings import settings
 from app.database.connection import engine, Base
 from app.api import (
     auth,
+    admin_console,
     admin_users,
     csv_data,
     health,
@@ -94,6 +95,7 @@ if settings.environment != "production":
 
 # Register routers
 app.include_router(auth.router)
+app.include_router(admin_console.router)
 app.include_router(admin_users.router)
 app.include_router(csv_data.router)
 app.include_router(health.router)

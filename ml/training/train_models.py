@@ -16,6 +16,7 @@ Run:
 import os
 import sys
 import json
+from datetime import datetime, timezone
 import joblib
 import numpy as np
 import pandas as pd
@@ -25,6 +26,8 @@ from sklearn.metrics import (
     classification_report,
     accuracy_score,
     f1_score,
+    precision_score,
+    recall_score,
     confusion_matrix,
 )
 
@@ -65,9 +68,13 @@ def train_and_evaluate():
         y_pred = model.predict(X_test)
 
         acc = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred, average="weighted", zero_division=0)
+        recall = recall_score(y_test, y_pred, average="weighted", zero_division=0)
         f1 = f1_score(y_test, y_pred, average="weighted")
         results[name] = {
             "accuracy": round(float(acc), 4),
+            "precision_weighted": round(float(precision), 4),
+            "recall_weighted": round(float(recall), 4),
             "f1_weighted": round(float(f1), 4),
         }
 
@@ -93,6 +100,8 @@ def train_and_evaluate():
                 "results": results,
                 "best_model": best_name,
                 "feature_list": FEATURES,
+                "evaluated_at": datetime.now(timezone.utc).isoformat(),
+                "training_data_source": "Synthetic student risk dataset",
             },
             f,
             indent=2,
@@ -108,4 +117,3 @@ def train_and_evaluate():
 
 if __name__ == "__main__":
     train_and_evaluate()
-

@@ -11,6 +11,7 @@ import SupportRequestQueue from '../../components/SupportRequestQueue';
 import ImportedDemoDatasetSection, { type ImportedDemoDataset } from '../../components/ImportedDemoDataset';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
+import { lecturerDashboard } from '../../services/mockData';
 import type { LmsReferral } from '../../types';
 import { riskBg } from '../../utils/helpers';
 
@@ -41,6 +42,9 @@ export default function AdvisorDashboard() {
   if (error) return <div role="alert" className="neo-card p-6 text-ns-danger">{error}</div>;
   if (!data) return null;
   const summary = data.summary;
+  const demoStudents = lecturerDashboard.students;
+  const demoHighRiskCount = demoStudents.filter((student) => student.risk_level === 'HIGH').length;
+  const demoReviewCount = demoStudents.filter((student) => student.risk_level !== 'LOW').length;
   return (
     <div className="space-y-6">
       <DashboardHero
@@ -50,17 +54,48 @@ export default function AdvisorDashboard() {
       <section aria-labelledby="native-lms-workflow-title">
         <div className="mb-3">
           <h2 id="native-lms-workflow-title" className="font-semibold text-ns-text-primary">Live LMS workflow</h2>
-          <p className="mt-1 text-xs text-ns-text-secondary">These counts cover native LMS referrals and cases only. The separate synthetic CSV dataset and its non-zero status totals are shown below.</p>
+          <p className="mt-1 text-xs text-ns-text-secondary">These are live backend workflow counts. Sample students are displayed separately below and do not create referrals or cases.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <StatCard title="New referrals" value={summary.new_referrals || 9} />
-          <StatCard title="Assigned students" value={summary.assigned_students || 4} />
-          <StatCard title="Students to contact" value={summary.students_to_contact || 9} />
-          <StatCard title="Awaiting response" value={summary.awaiting_response || 4} />
-          <StatCard title="Meetings scheduled" value={summary.meetings_scheduled || 0} />
-          <StatCard title="Active interventions" value={summary.active_interventions || 15} />
-          <StatCard title="Follow-ups due" value={summary.follow_ups_due || 10} />
-          <StatCard title="Resolved cases" value={summary.resolved_cases || 2} />
+          <StatCard title="New referrals" value={summary.new_referrals} />
+          <StatCard title="Assigned students" value={summary.assigned_students} />
+          <StatCard title="Students to contact" value={summary.students_to_contact} />
+          <StatCard title="Awaiting response" value={summary.awaiting_response} />
+          <StatCard title="Meetings scheduled" value={summary.meetings_scheduled} />
+          <StatCard title="Active interventions" value={summary.active_interventions} />
+          <StatCard title="Follow-ups due" value={summary.follow_ups_due} />
+          <StatCard title="Resolved cases" value={summary.resolved_cases} />
+        </div>
+      </section>
+
+      <section className="neo-card border border-dashed border-brand-300 p-5" aria-labelledby="advisor-demo-cohort-title">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 id="advisor-demo-cohort-title" className="font-bold text-ns-text-primary">Demo cohort · shared with Lecturer view</h2>
+            <p className="mt-1 text-xs text-amber-800">Illustrative records from the shared frontend demo student list. These do not represent live referrals, and no advisor actions are available for them.</p>
+          </div>
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold uppercase text-amber-900">Demo data</span>
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:max-w-md">
+          <StatCard title="Demo students for review" value={demoReviewCount} />
+          <StatCard title="Demo high-risk students" value={demoHighRiskCount} />
+        </div>
+        <div className="mt-4 overflow-x-auto">
+          <table className="ns-table min-w-[760px]">
+            <caption className="sr-only">Sample students shared with the lecturer demo roster</caption>
+            <thead><tr><th>Student</th><th>Student number</th><th>Module</th><th>Risk indicator</th><th>Average mark</th><th>Attendance</th><th>Evidence from Lecturer view</th></tr></thead>
+            <tbody>{demoStudents.map((student) => (
+              <tr key={student.id}>
+                <td>{student.name}</td>
+                <td>{student.student_number}</td>
+                <td>{student.module}</td>
+                <td><span className={`neo-chip ${riskBg(student.risk_level)}`}>{student.risk_level}</span></td>
+                <td>{student.average_mark}%</td>
+                <td>{student.attendance}%</td>
+                <td className="max-w-[280px] whitespace-normal">{student.ai_explanation}</td>
+              </tr>
+            ))}</tbody>
+          </table>
         </div>
       </section>
 
