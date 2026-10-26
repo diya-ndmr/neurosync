@@ -12,7 +12,7 @@ import {
 } from '../../services/liveData';
 
 export default function Academics() {
-  const { data: assessments, loading } = useApiData(fetchStudentAssessments);
+  const { data: assessments, loading, error } = useApiData(fetchStudentAssessments);
   const { data: dashboard } = useApiData(fetchStudentDashboard);
   const { data: supplementaryFeedback, loading: feedbackLoading, error: feedbackError } =
     useApiData(fetchSupplementaryAssessmentFeedback);
@@ -34,6 +34,8 @@ export default function Academics() {
         <h1 className="text-2xl font-semibold text-ink">Academics</h1>
         <p className="text-sm text-ink-soft">Your detailed assessment history</p>
       </motion.div>
+
+      {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-ns-danger">Your assessment record could not be loaded: {error}</p>}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <BarChartCard

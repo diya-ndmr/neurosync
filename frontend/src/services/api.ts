@@ -1,5 +1,6 @@
 const configuredApiUrl = import.meta.env.VITE_API_URL?.replace(/\/+$/, '');
 const apiConfigured = Boolean(configuredApiUrl) || !import.meta.env.PROD;
+const API_REQUEST_TIMEOUT_MS = 15000;
 export const API_BASE = configuredApiUrl
   ? configuredApiUrl.endsWith('/api')
     ? configuredApiUrl
@@ -7,10 +8,8 @@ export const API_BASE = configuredApiUrl
   : '/api';
 
 export class ApiUnavailableError extends Error {
-  constructor() {
-    super(
-      'The NeuroSync API is unavailable. Configure VITE_API_URL with the deployed backend URL and allow this frontend origin in backend CORS_ORIGINS.',
-    );
+  constructor(message = 'The NeuroSync API is unavailable. Configure VITE_API_URL with the deployed backend URL and allow this frontend origin in backend CORS_ORIGINS.') {
+    super(message);
     this.name = 'ApiUnavailableError';
   }
 }
@@ -34,22 +33,32 @@ interface RequestOptions {
   token?: string;
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new ApiUnavailableError(`The NeuroSync API did not respond within ${API_REQUEST_TIMEOUT_MS / 1000} seconds. Check the production backend URL and its availability.`);
+    }
+    if (error instanceof TypeError) throw new ApiUnavailableError();
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 async function request<T>(path: string, { method = 'GET', body, token }: RequestOptions = {}): Promise<T> {
   if (!apiConfigured) throw new ApiUnavailableError();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined
-    });
-  } catch (error) {
-    if (error instanceof TypeError) throw new ApiUnavailableError();
-    throw error;
-  }
+  const res = await fetchWithTimeout(`${API_BASE}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined
+  });
 
   if (!res.ok) {
     let message = `Request failed with status ${res.status}`;
@@ -74,13 +83,7 @@ async function requestBlob(path: string, token?: string): Promise<Blob> {
   if (!apiConfigured) throw new ApiUnavailableError();
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE}${path}`, { headers });
-  } catch (error) {
-    if (error instanceof TypeError) throw new ApiUnavailableError();
-    throw error;
-  }
+  const response = await fetchWithTimeout(`${API_BASE}${path}`, { headers });
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
     try {
@@ -99,13 +102,7 @@ async function requestForm<T>(path: string, form: FormData, token?: string): Pro
   if (!apiConfigured) throw new ApiUnavailableError();
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
-  let response: Response;
-  try {
-    response = await fetch(`${API_BASE}${path}`, { method: 'POST', headers, body: form });
-  } catch (error) {
-    if (error instanceof TypeError) throw new ApiUnavailableError();
-    throw error;
-  }
+  const response = await fetchWithTimeout(`${API_BASE}${path}`, { method: 'POST', headers, body: form });
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
     try {
